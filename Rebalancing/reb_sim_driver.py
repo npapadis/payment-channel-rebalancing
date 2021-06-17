@@ -12,7 +12,8 @@ def pypet_wrapper(traj):
         "capacity_L": traj.capacity_L,
         "capacity_R": traj.capacity_R,
         "base_fee": traj.base_fee,
-        "proportional_fee": traj.proportional_fee
+        "proportional_fee": traj.proportional_fee,
+        "on_chain_budget": traj.on_chain_budget
     }
 
     experiment_parameters = {
@@ -28,7 +29,18 @@ def pypet_wrapper(traj):
         "seed": traj.seed
     }
 
-    results, all_transactions_list = simulate_node(node_parameters, experiment_parameters)
+    rebalancing_parameters = {
+        "server_min_swap_amount": traj.server_min_swap_amount,
+        "server_swap_fee": traj.server_swap_fee,
+        "rebalancing_policy": traj.rebalancing_policy,
+        "lower_threshold": traj.lower_threshold,
+        "upper_threshold": traj.upper_threshold,
+        "swap_amount": traj.swap_amount,
+        "T_conf": traj.T_conf,
+        "miner_fee": traj.miner_fee
+    }
+
+    results, all_transactions_list = simulate_node(node_parameters, experiment_parameters, rebalancing_parameters)
 
     # traj.f_add_result('measurement_interval_length', results['measurement_interval_length'], comment='Measurement interval length')
     # traj.f_add_result('success_count_node_0', results['success_counts'][0], comment='Number of successful transactions (node 0)')
@@ -67,7 +79,7 @@ def pypet_wrapper(traj):
 def main():
     # Create the environment
     env = pypet.Environment(trajectory='single_payment_channel_scheduling',
-                            filename='./HDF5/results_100.hdf5',
+                            filename='../HDF5/results_100.hdf5',
                             overwrite_file=True)
     traj = env.traj
     # EMPIRICAL_DATA_FILEPATH = "./creditcard-non-fraudulent-only-amounts-only.csv"
@@ -79,31 +91,46 @@ def main():
 
     base_fee = 10.0
     proportional_fee = 0.1
+    on_chain_budget = 1000
 
     # Channel N-L
     initial_balance_L = 0
     capacity_L = 300
     total_transactions_L_to_R = 500
     exp_mean_L_to_R = 1 / 3
-    # amount_distribution_L_to_R = "constant"
-    # amount_distribution_parameters_L_to_R = [100]                   # value of all transactions
+    amount_distribution_L_to_R = "constant"
+    amount_distribution_parameters_L_to_R = [100]                  # value of all transactions
     # amount_distribution_L_to_R = "uniform"
     # amount_distribution_parameters_L_to_R = [100]                # max_transaction_amount
-    amount_distribution_L_to_R = "gaussian"
-    amount_distribution_parameters_L_to_R = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
+    # amount_distribution_L_to_R = "gaussian"
+    # amount_distribution_parameters_L_to_R = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # Channel N-R
     initial_balance_R = 300         # Capacity = 300
     capacity_R = 300
     total_transactions_R_to_L = 500
     exp_mean_R_to_L = 1 / 3
-    # amount_distribution_R_to_L = "constant"
-    # amount_distribution_parameters_R_to_L = [100]                   # value of all transactions
-    amount_distribution_R_to_L = "uniform"
-    amount_distribution_parameters_R_to_L = [100]                # max_transaction_amount
+    amount_distribution_R_to_L = "constant"
+    amount_distribution_parameters_R_to_L = [100]                  # value of all transactions
+    # amount_distribution_R_to_L = "uniform"
+    # amount_distribution_parameters_R_to_L = [100]                # max_transaction_amount
     # amount_distribution_R_to_L = "gaussian"
     # amount_distribution_parameters_R_to_L = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
+    # REBALANCING
+    # LSP parameters
+    server_min_swap_amount = 20
+    server_swap_fee = 0.05      # percentage of swap amount
+
+    # Node parameters
+    rebalancing_policy = "autoloop"
+    # rebalancing_policy_parameters = [0.2, 0.8, server_min_swap_amount]  # [min % balance, max % balance, margin from target to launch]
+    lower_threshold = 0.2
+    upper_threshold = 0.8
+    swap_amount = server_min_swap_amount
+
+    T_conf = 60
+    miner_fee = 10
 
     # Encode parameters for pypet
 
@@ -123,6 +150,16 @@ def main():
 
     traj.f_add_parameter('base_fee', base_fee, comment='Base forwarding fee charged by node N')
     traj.f_add_parameter('proportional_fee', proportional_fee, comment='Proportional forwarding fee charged by node N')
+    traj.f_add_parameter('on_chain_budget', on_chain_budget, comment='On-chain budget of node N')
+
+    traj.f_add_parameter('server_min_swap_amount', server_min_swap_amount, comment='Minimum amount the LSP allows for a swap')
+    traj.f_add_parameter('server_swap_fee', server_swap_fee, comment='Percentage of swap amount the LSP charges as fees')
+    traj.f_add_parameter('rebalancing_policy', rebalancing_policy, comment='Rebalancing policy')
+    traj.f_add_parameter('lower_threshold', lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in')
+    traj.f_add_parameter('upper_threshold', upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out')
+    traj.f_add_parameter('swap_amount', swap_amount, comment='Swap amount node N requests')
+    traj.f_add_parameter('T_conf', T_conf, comment='Confirmation time for an on-chain transaction')
+    traj.f_add_parameter('miner_fee', miner_fee, comment='Miner fee for an on-chain transaction')
 
     traj.f_add_parameter('verbose', verbose, comment='Verbose output')
     traj.f_add_parameter('num_of_experiments', num_of_experiments, comment='Repetitions of every experiment')

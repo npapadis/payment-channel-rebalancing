@@ -9,15 +9,25 @@ from math import inf
 
 
 class Node:
-    def __init__(self, env, initial_balance_L, initial_balance_R, capacity_L, capacity_R, fees, verbose):
+    def __init__(self, env, node_parameters, rebalancing_parameters, verbose):
         self.env = env
-        self.balances = {"L": initial_balance_L, "R": initial_balance_R}
-        self.capacities = {"L": capacity_L, "R": capacity_R}
+        self.balances = {"L": node_parameters["initial_balance_L"], "R": node_parameters["initial_balance_R"]}
+        self.capacities = {"L": node_parameters["capacity_L"], "R": node_parameters["capacity_R"]}
+        self.fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
+        self.on_chain_budget = node_parameters["on_chain_budget"]
+        self.rebalancing_parameters = rebalancing_parameters
         self.verbose = verbose
+
         self.node_processor = simpy.Resource(env, capacity=1)
-        self.fees = fees       # Base and proportional fee charged by node for forwarding payments
+        self.rebalancing_locks = {"L": simpy.Resource(env, capacity=1), "R": simpy.Resource(env, capacity=1)}     # max 1 rebalancing operation active at a time
+        self.rebalance_requests = {"L": self.env.event(), "R": self.env.event()}
+
         self.balance_history_times = []
         self.balance_history_values = []
+        self.rebalancing_history_start_times = []
+        self.rebalancing_history_end_times = []
+        self.rebalancing_history_types = []
+        self.rebalancing_history_amounts = []
 
     def calculate_fees(self, amount):
         return self.fees[0] + amount*self.fees[1]
@@ -47,6 +57,65 @@ class Node:
         else:
             self.reject_transaction(t)
 
+    def perform_rebalancing_if_needed(self):
+        for neighbor in ["L", "R"]:
+            if self.rebalancing_locks[neighbor].count == 0:     # if no rebalancing in progress in the N-neighbor channel
+                with self.rebalancing_locks[neighbor].request() as rebalance_request:  # Generate a request event
+                    yield rebalance_request
+
+                    if self.rebalancing_parameters["rebalancing_policy"] == "none":
+                        pass
+                        # return "none"
+                    elif self.rebalancing_parameters["rebalancing_policy"] == "autoloop":
+                        if self.balances[neighbor] < self.rebalancing_parameters["lower_threshold"] * self.capacities[neighbor]:
+                            self.rebalancing_history_start_times.append(self.env.now)
+                            self.rebalancing_history_types.append(neighbor + "-IN")
+                            self.rebalancing_history_amounts.append(self.rebalancing_parameters["swap_amount"])
+                            if self.verbose:
+                                print("Time {:.2f}: SWAP-IN initiated in channel N-{} with amount {}.". format(self.env.now, neighbor, self.rebalancing_parameters["swap_amount"]))
+
+                            self.on_chain_budget -= (self.rebalancing_parameters["swap_amount"]*(1+self.rebalancing_parameters["server_swap_fee"]) + self.rebalancing_parameters["miner_fee"])
+                            yield self.env.timeout(self.rebalancing_parameters["T_conf"])
+                            self.balances[neighbor] += self.rebalancing_parameters["swap_amount"]
+
+                            self.rebalancing_history_end_times.append(self.env.now)
+                            if self.verbose:
+                                print("Time {:.2f}: SWAP-IN completed in channel N-{} with amount {}.". format(self.env.now, neighbor, self.rebalancing_parameters["swap_amount"]))
+                                print("Time {:.2f}: New balances are {}.".format(self.env.now, self.balances))
+                            self.rebalance_requests[neighbor].succeed()
+                            self.rebalance_requests[neighbor] = self.env.event()
+                            # return neighbor + "-in"
+
+                        elif self.balances[neighbor] > self.rebalancing_parameters["upper_threshold"] * self.capacities[neighbor]:
+                            self.rebalancing_history_start_times.append(self.env.now)
+                            self.rebalancing_history_types.append(neighbor + "-OUT")
+                            self.rebalancing_history_amounts.append(self.rebalancing_parameters["swap_amount"])
+                            if self.verbose:
+                                print("Time {:.2f}: SWAP-OUT initiated in channel N-{} with amount {}.". format(self.env.now, neighbor, self.rebalancing_parameters["swap_amount"]))
+
+                            self.balances[neighbor] -= self.rebalancing_parameters["swap_amount"]
+                            yield self.env.timeout(self.rebalancing_parameters["T_conf"])
+                            self.on_chain_budget += (self.rebalancing_parameters["swap_amount"]*(1-self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"])
+
+                            self.rebalancing_history_end_times.append(self.env.now)
+                            if self.verbose:
+                                print("Time {:.2f}: SWAP-OUT completed in channel N-{} with amount {}.". format(self.env.now, neighbor, self.rebalancing_parameters["swap_amount"]))
+                                print("Time {:.2f}: New balances are {}.".format(self.env.now, self.balances))
+                            self.rebalance_requests[neighbor].succeed()
+                            self.rebalance_requests[neighbor] = self.env.event()
+                            # return neighbor + "-out"
+
+                        else:
+                            pass    # no rebalancing needed
+                            # return False
+            else:
+                pass  # if rebalancing already in progress, do not check again if rebalancing is needed
+
+    def run(self):
+        while True:
+            # yield self.rebalance_requests["L"] | self.rebalance_requests["R"]
+            yield self.env.process(self.perform_rebalancing_if_needed())
+            yield self.env.timeout(10)
 
 class Transaction:
     # def __init__(self, env, time_of_arrival, path, previous_node, current_node, next_node, amount, verbose):
@@ -86,9 +155,9 @@ class Transaction:
             sys.exit(1)
 
     def run(self):
-        with self.current_node.node_processor.request() as request:     # Generate a request event
-            yield request                                               # Wait for access to the node_processor
-            self.current_node.process_transaction(self)                 # Once the channel belongs to the transaction, try to process it.
+        with self.current_node.node_processor.request() as process_request:     # Generate a request event
+            yield process_request                                               # Wait for access to the node_processor
+            self.current_node.process_transaction(self)                         # Once the channel belongs to the transaction, try to process it.
 
     def __repr__(self):
         return "%s->%s t=%.2f a=%d" % (self.source, self.destination, self.time_of_arrival, self.amount)
@@ -115,11 +184,11 @@ def transaction_generator(env, topology, source, destination, total_transactions
         #     size = amount_distribution_parameters[2]  # the size of your sample (number of random values)
         #     amount = random.pareto(shape, size) + lower
         # elif amount_distribution == "powerlaw":
-            # powerlaw.Power_Law(xmin=1, xmax=2, discrete=True, parameters=[1.16]).generate_random(n=10)
-        elif amount_distribution == "empirical_from_csv_file":
-            dataset = amount_distribution_parameters[0]
-            data_size = amount_distribution_parameters[1]
-            amount = dataset[random.randint(0, data_size)]
+        #     powerlaw.Power_Law(xmin=1, xmax=2, discrete=True, parameters=[1.16]).generate_random(n=10)
+        # elif amount_distribution == "empirical_from_csv_file":
+        #     dataset = amount_distribution_parameters[0]
+        #     data_size = amount_distribution_parameters[1]
+        #     amount = dataset[random.randint(0, data_size)]
         else:
             print("Input error: {} is not a supported amount distribution or the parameters {} given are invalid.".format(amount_distribution, amount_distribution_parameters))
             sys.exit(1)
@@ -134,13 +203,13 @@ def transaction_generator(env, topology, source, destination, total_transactions
         yield env.timeout(time_to_next_arrival)
 
 
-def simulate_node(node_parameters, experiment_parameters):
+def simulate_node(node_parameters, experiment_parameters, rebalancing_parameters):
 
-    initial_balance_L = node_parameters["initial_balance_L"]
-    initial_balance_R = node_parameters["initial_balance_R"]
-    capacity_L = node_parameters["capacity_L"]
-    capacity_R = node_parameters["capacity_R"]
-    fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
+    # initial_balance_L = node_parameters["initial_balance_L"]
+    # initial_balance_R = node_parameters["initial_balance_R"]
+    # capacity_L = node_parameters["capacity_L"]
+    # capacity_R = node_parameters["capacity_R"]
+    # fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
 
     total_transactions_L_to_R = experiment_parameters["total_transactions_L_to_R"]
     exp_mean_L_to_R = experiment_parameters["exp_mean_L_to_R"]
@@ -165,7 +234,8 @@ def simulate_node(node_parameters, experiment_parameters):
 
     env = simpy.Environment()
 
-    N = Node(env, initial_balance_L, initial_balance_R, capacity_L, capacity_R, fees, verbose)
+    N = Node(env, node_parameters, rebalancing_parameters, verbose)
+    env.process(N.run())
 
     topology = {"N": N}
 
