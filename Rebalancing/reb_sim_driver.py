@@ -1,5 +1,5 @@
 import pypet
-from reb_simulate_channel import *
+from simulate_relay_node import *
 import csv
 from statsmodels.distributions.empirical_distribution import ECDF
 from math import floor, ceil
@@ -30,17 +30,18 @@ def pypet_wrapper(traj):
     }
 
     rebalancing_parameters = {
-        "server_min_swap_amount": traj.server_min_swap_amount,
+        # "server_min_swap_amount": traj.server_min_swap_amount,
         "server_swap_fee": traj.server_swap_fee,
         "rebalancing_policy": traj.rebalancing_policy,
         "lower_threshold": traj.lower_threshold,
         "upper_threshold": traj.upper_threshold,
-        "swap_amount": traj.swap_amount,
+        # "default_swap_amount": traj.default_swap_amount,
+        "check_interval": traj.check_interval,
         "T_conf": traj.T_conf,
         "miner_fee": traj.miner_fee
     }
 
-    results, all_transactions_list = simulate_node(node_parameters, experiment_parameters, rebalancing_parameters)
+    results, all_transactions_list = simulate_relay_node(node_parameters, experiment_parameters, rebalancing_parameters)
 
     # traj.f_add_result('measurement_interval_length', results['measurement_interval_length'], comment='Measurement interval length')
     # traj.f_add_result('success_count_node_0', results['success_counts'][0], comment='Number of successful transactions (node 0)')
@@ -78,7 +79,7 @@ def pypet_wrapper(traj):
 
 def main():
     # Create the environment
-    env = pypet.Environment(trajectory='single_payment_channel_scheduling',
+    env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
                             filename='../HDF5/results_100.hdf5',
                             overwrite_file=True)
     traj = env.traj
@@ -89,48 +90,50 @@ def main():
     verbose = True
     num_of_experiments = 1
 
-    base_fee = 10.0
-    proportional_fee = 0.1
+    base_fee = 4e-4
+    proportional_fee = 1e-6
     on_chain_budget = 1000
 
     # Channel N-L
-    initial_balance_L = 0
-    capacity_L = 300
+    initial_balance_L = 500
+    capacity_L = 1000
     total_transactions_L_to_R = 500
-    exp_mean_L_to_R = 1 / 3
-    amount_distribution_L_to_R = "constant"
-    amount_distribution_parameters_L_to_R = [100]                  # value of all transactions
-    # amount_distribution_L_to_R = "uniform"
-    # amount_distribution_parameters_L_to_R = [100]                # max_transaction_amount
+    exp_mean_L_to_R = 6 / 1     # 6 transactions per minute
+    # amount_distribution_L_to_R = "constant"
+    # amount_distribution_parameters_L_to_R = [10]                  # value of all transactions
+    amount_distribution_L_to_R = "uniform"
+    amount_distribution_parameters_L_to_R = [30]                # max_transaction_amount
     # amount_distribution_L_to_R = "gaussian"
     # amount_distribution_parameters_L_to_R = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # Channel N-R
-    initial_balance_R = 300         # Capacity = 300
-    capacity_R = 300
+    initial_balance_R = 500         # Capacity = 300
+    capacity_R = 1000
     total_transactions_R_to_L = 500
-    exp_mean_R_to_L = 1 / 3
-    amount_distribution_R_to_L = "constant"
-    amount_distribution_parameters_R_to_L = [100]                  # value of all transactions
-    # amount_distribution_R_to_L = "uniform"
-    # amount_distribution_parameters_R_to_L = [100]                # max_transaction_amount
+    exp_mean_R_to_L = 3 / 1     # 3 transactions per minute
+    # amount_distribution_R_to_L = "constant"
+    # amount_distribution_parameters_R_to_L = [10]                   # value of all transactions
+    amount_distribution_R_to_L = "uniform"
+    amount_distribution_parameters_R_to_L = [30]                # max_transaction_amount
     # amount_distribution_R_to_L = "gaussian"
     # amount_distribution_parameters_R_to_L = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # REBALANCING
     # LSP parameters
-    server_min_swap_amount = 20
-    server_swap_fee = 0.05      # percentage of swap amount
+    # server_min_swap_amount = 100
+    server_swap_fee = 0.005      # fraction of swap amount
 
     # Node parameters
+    # rebalancing_policy = "none"
     rebalancing_policy = "autoloop"
     # rebalancing_policy_parameters = [0.2, 0.8, server_min_swap_amount]  # [min % balance, max % balance, margin from target to launch]
     lower_threshold = 0.2
     upper_threshold = 0.8
-    swap_amount = server_min_swap_amount
+    # default_swap_amount = server_min_swap_amount
+    check_interval = 10     # minutes =  600 seconds
 
-    T_conf = 60
-    miner_fee = 10
+    T_conf = 30     #minutes = 1800 seconds
+    miner_fee = 5
 
     # Encode parameters for pypet
 
@@ -152,13 +155,14 @@ def main():
     traj.f_add_parameter('proportional_fee', proportional_fee, comment='Proportional forwarding fee charged by node N')
     traj.f_add_parameter('on_chain_budget', on_chain_budget, comment='On-chain budget of node N')
 
-    traj.f_add_parameter('server_min_swap_amount', server_min_swap_amount, comment='Minimum amount the LSP allows for a swap')
+    # traj.f_add_parameter('server_min_swap_amount', server_min_swap_amount, comment='Minimum amount the LSP allows for a swap')
     traj.f_add_parameter('server_swap_fee', server_swap_fee, comment='Percentage of swap amount the LSP charges as fees')
     traj.f_add_parameter('rebalancing_policy', rebalancing_policy, comment='Rebalancing policy')
     traj.f_add_parameter('lower_threshold', lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in')
     traj.f_add_parameter('upper_threshold', upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out')
-    traj.f_add_parameter('swap_amount', swap_amount, comment='Swap amount node N requests')
-    traj.f_add_parameter('T_conf', T_conf, comment='Confirmation time for an on-chain transaction')
+    # traj.f_add_parameter('default_swap_amount', default_swap_amount, comment='Default swap amount node N requests')
+    traj.f_add_parameter('check_interval', check_interval, comment='Time in seconds every which a check for rebalancing is performed')
+    traj.f_add_parameter('T_conf', T_conf, comment='Confirmation time (seconds) for an on-chain transaction')
     traj.f_add_parameter('miner_fee', miner_fee, comment='Miner fee for an on-chain transaction')
 
     traj.f_add_parameter('verbose', verbose, comment='Verbose output')
