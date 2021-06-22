@@ -1,8 +1,13 @@
+import os
+import pickle
+
+import pandas as pd
 import pypet
 from simulate_relay_node import *
 import csv
 from statsmodels.distributions.empirical_distribution import ECDF
 from math import floor, ceil
+import numpy as np
 
 
 def pypet_wrapper(traj):
@@ -41,54 +46,47 @@ def pypet_wrapper(traj):
         "miner_fee": traj.miner_fee
     }
 
-    results, all_transactions_list = simulate_relay_node(node_parameters, experiment_parameters, rebalancing_parameters)
+    results = simulate_relay_node(node_parameters, experiment_parameters, rebalancing_parameters)
 
-    # traj.f_add_result('measurement_interval_length', results['measurement_interval_length'], comment='Measurement interval length')
-    # traj.f_add_result('success_count_node_0', results['success_counts'][0], comment='Number of successful transactions (node 0)')
-    # traj.f_add_result('success_count_node_1', results['success_counts'][1], comment='Number of successful transactions (node 1)')
-    # traj.f_add_result('success_count_channel_total', results['success_counts'][2], comment='Number of successful transactions (channel total)')
-    # traj.f_add_result('arrived_count_node_0', results['arrived_counts'][0], comment='Number of transactions that arrived (node 0)')
-    # traj.f_add_result('arrived_count_node_1', results['arrived_counts'][1], comment='Number of transactions that arrived (node 1)')
-    # traj.f_add_result('arrived_count_channel_total', results['arrived_counts'][2], comment='Number of transactions that arrived (channel total)')
-    # traj.f_add_result('success_amount_node_0', results['success_amounts'][0], comment='Throughput (Amount of successful transactions) (node 0)')
-    # traj.f_add_result('success_amount_node_1', results['success_amounts'][1], comment='Throughput (Amount of successful transactions) (node 1)')
-    # traj.f_add_result('success_amount_channel_total', results['success_amounts'][2], comment='Throughput (Amount of successful transactions) (channel total)')
-    # traj.f_add_result('arrived_amount_node_0', results['arrived_amounts'][0], comment='Amount of transactions that arrived (node 0)')
-    # traj.f_add_result('arrived_amount_node_1', results['arrived_amounts'][1], comment='Amount of transactions that arrived (node 1)')
-    # traj.f_add_result('arrived_amount_channel_total', results['arrived_amounts'][2], comment='Amount of transactions that arrived (channel total)')
-    # traj.f_add_result('sacrificed_count_node_0', results['sacrificed_counts'][0], comment='Number of sacrificed transactions (node 0)')
-    # traj.f_add_result('sacrificed_count_node_1', results['sacrificed_counts'][1], comment='Number of sacrificed transactions (node 1)')
-    # traj.f_add_result('sacrificed_count_channel_total', results['sacrificed_counts'][2], comment='Number of sacrificed transactions (channel total)')
-    # traj.f_add_result('sacrificed_amount_node_0', results['sacrificed_amounts'][0], comment='Amount of sacrificed transactions (node 0)')
-    # traj.f_add_result('sacrificed_amount_node_1', results['sacrificed_amounts'][1], comment='Amount of sacrificed transactions (node 1)')
-    # traj.f_add_result('sacrificed_amount_channel_total', results['sacrificed_amounts'][2], comment='Amount of sacrificed transactions (channel total)')
-    # traj.f_add_result('success_rate_node_0', results['success_rates'][0], comment='Success rate (node 0)')
-    # traj.f_add_result('success_rate_node_1', results['success_rates'][1], comment='Success rate (node 1)')
-    # traj.f_add_result('success_rate_channel_total', results['success_rates'][2], comment='Success rate (channel total)')
-    # traj.f_add_result('normalized_throughput_node_0', results['normalized_throughputs'][0], comment='Normalized throughput (node 0)')
-    # traj.f_add_result('normalized_throughput_node_1', results['normalized_throughputs'][1], comment='Normalized throughput (node 1)')
-    # traj.f_add_result('normalized_throughput_channel_total', results['normalized_throughputs'][2], comment='Normalized throughput (channel total)')
-    # traj.f_add_result('total_queueing_time_of_successful_transactions', results['total_queueing_times'][0], comment='Total queueing time of successful transactions')
-    # traj.f_add_result('total_queueing_time_of_all_transactions', results['total_queueing_times'][1], comment='Total queueing time of all transactions')
-    # traj.f_add_result('average_total_queueing_time_per_successful_unit_amount', results['total_queueing_times'][2], comment='Average queueing delay per successful unit amount')
-    # traj.f_add_result('average_total_queueing_time_per_successful_transaction', results['total_queueing_times'][3], comment='Average queueing delay per transaction')
+    traj.f_add_result('measurement_interval_length', results['measurement_interval_length'], comment='Measurement interval length')
+    traj.f_add_result('success_count_L_to_R', results['success_count_L_to_R'], comment='Number of successful transactions from L to R')
+    traj.f_add_result('success_count_R_to_L', results['success_count_R_to_L'], comment='Number of successful transactions from R to L')
+    traj.f_add_result('success_count_node_total', results['success_count_node_total'], comment='Number of successful transactions (node total)')
+    traj.f_add_result('arrived_count_L_to_R', results['arrived_count_L_to_R'], comment='Number of transactions that arrived from L to R')
+    traj.f_add_result('arrived_count_R_to_L', results['arrived_count_R_to_L'], comment='Number of transactions that arrived from R to L')
+    traj.f_add_result('arrived_count_node_total', results['arrived_count_node_total'], comment='Number of transactions that arrived (node total)')
+    traj.f_add_result('success_amount_L_to_R', results['success_amount_L_to_R'], comment='Throughput (Amount of successful transactions) from L to R')
+    traj.f_add_result('success_amount_R_to_L', results['success_amount_R_to_L'], comment='Throughput (Amount of successful transactions) from R to L')
+    traj.f_add_result('success_amount_node_total', results['success_amount_node_total'], comment='Throughput (Amount of successful transactions) (node total)')
+    traj.f_add_result('arrived_amount_L_to_R', results['arrived_amount_L_to_R'], comment='Amount of transactions that arrived from L to R')
+    traj.f_add_result('arrived_amount_R_to_L', results['arrived_amount_R_to_L'], comment='Amount of transactions that arrived from R to L')
+    traj.f_add_result('arrived_amount_node_total', results['arrived_amount_node_total'], comment='Amount of transactions that arrived (node total)')
+    traj.f_add_result('success_rate_L_to_R', results['success_rate_L_to_R'], comment='Success rate from L to R')
+    traj.f_add_result('success_rate_R_to_L', results['success_rate_R_to_L'], comment='Success rate from R to L')
+    traj.f_add_result('success_rate_node_total', results['success_rate_node_total'], comment='Success rate (node total)')
+    traj.f_add_result('normalized_throughput_L_to_R', results['normalized_throughput_L_to_R'], comment='Normalized throughput from L to R')
+    traj.f_add_result('normalized_throughput_R_to_L', results['normalized_throughput_R_to_L'], comment='Normalized throughput from R to L')
+    traj.f_add_result('normalized_throughput_node_total', results['normalized_throughput_node_total'], comment='Normalized throughput (node total)')
+    traj.f_add_result('initial_fortune', results['initial_fortune'], comment='Initial fortune of node')
+    traj.f_add_result('final_fortune_without_pending_swaps', results['final_fortune_without_pending_swaps'], comment='Final total fortune of node N without pending swaps')
+    traj.f_add_result('final_fortune_with_pending_swaps', results['final_fortune_with_pending_swaps'], comment='Final total fortune of node N with pending swaps')
 
-    # traj.f_add_result('all_transactions_list', all_transactions_list, 'All transactions')
-
+    # traj.f_add_result('all_transactions_list', results['all_transactions_list'], 'All transactions')
+    # traj.f_add_result('all_transaction_signatures', results['all_transaction_signatures'], 'All transactions')
 
 
 def main():
     # Create the environment
     env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
-                            filename='../HDF5/results_100.hdf5',
+                            filename='./results/results_02.hdf5',
                             overwrite_file=True)
     traj = env.traj
     # EMPIRICAL_DATA_FILEPATH = "./creditcard-non-fraudulent-only-amounts-only.csv"
 
     # SIMULATION PARAMETERS
 
-    verbose = True
-    num_of_experiments = 1
+    verbose = False
+    num_of_experiments = 10
 
     base_fee = 4e-4
     proportional_fee = 1e-6
@@ -98,7 +96,7 @@ def main():
     initial_balance_L = 500
     capacity_L = 1000
     total_transactions_L_to_R = 500
-    exp_mean_L_to_R = 6 / 1     # 6 transactions per minute
+    exp_mean_L_to_R = 6 / 1     # transactions per minute
     # amount_distribution_L_to_R = "constant"
     # amount_distribution_parameters_L_to_R = [10]                  # value of all transactions
     amount_distribution_L_to_R = "uniform"
@@ -107,10 +105,10 @@ def main():
     # amount_distribution_parameters_L_to_R = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # Channel N-R
-    initial_balance_R = 500         # Capacity = 300
+    initial_balance_R = 500
     capacity_R = 1000
     total_transactions_R_to_L = 500
-    exp_mean_R_to_L = 3 / 1     # 3 transactions per minute
+    exp_mean_R_to_L = 3 / 1     # transactions per minute
     # amount_distribution_R_to_L = "constant"
     # amount_distribution_parameters_R_to_L = [10]                   # value of all transactions
     amount_distribution_R_to_L = "uniform"
@@ -172,8 +170,11 @@ def main():
     seeds = [63621, 87563, 24240, 14020, 84331, 60917, 48692, 73114, 90695, 62302, 52578, 43760, 84941, 30804, 40434, 63664, 25704, 38368, 45271, 34425]
 
     traj.f_explore(pypet.cartesian_product({
-                                            'seed': seeds[1:traj.num_of_experiments + 1]
-                                            }))
+        # 'base_fee': [float(4*10**P) for P in list(range(-4, 2))],
+        'proportional_fee': [float(10**P) for P in list(range(-6, 0))],
+        'rebalancing_policy': ['none', 'autoloop'],
+        'seed': seeds[1:traj.num_of_experiments + 1]
+    }))
 
     # Run wrapping function instead of simulator directly
     env.run(pypet_wrapper)

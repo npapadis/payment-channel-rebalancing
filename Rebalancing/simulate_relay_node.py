@@ -89,53 +89,79 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
 
     # Calculate results
 
-    # measurement_interval = [total_simulation_time_estimation*0.1, total_simulation_time_estimation*0.9]
-    #
-    # success_count_node_0 = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 0) and (t.status == "SUCCEEDED")))
-    # success_count_node_1 = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 1) and (t.status == "SUCCEEDED")))
-    # success_count_channel_total = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "SUCCEEDED")))
-    # arrived_count_node_0 = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 0) and (t.status != "PENDING")))
-    # arrived_count_node_1 = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 1) and (t.status != "PENDING")))
-    # arrived_count_channel_total = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status != "PENDING")))
-    # success_amount_node_0 = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 0) and (t.status == "SUCCEEDED")))
-    # success_amount_node_1 = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 1) and (t.status == "SUCCEEDED")))
-    # success_amount_channel_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "SUCCEEDED")))
-    # arrived_amount_node_0 = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 0) and (t.status != "PENDING")))
-    # arrived_amount_node_1 = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.from_node == 1) and (t.status != "PENDING")))
-    # arrived_amount_channel_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status != "PENDING")))
-    # success_rate_node_0 = success_count_node_0/arrived_count_node_0
-    # success_rate_node_1 = success_count_node_1/arrived_count_node_1
-    # success_rate_channel_total = success_count_channel_total / arrived_count_channel_total
-    # normalized_throughput_node_0 = success_amount_node_0/arrived_amount_node_0      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
-    # normalized_throughput_node_1 = success_amount_node_1/arrived_amount_node_1      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
-    # normalized_throughput_channel_total = success_amount_channel_total/arrived_amount_channel_total     # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
-    #
-    # results = {
-    #     'measurement_interval_length': measurement_interval[1] - measurement_interval[0],
-    #     'success_counts': [success_count_node_0, success_count_node_1, success_count_channel_total],
-    #     'arrived_counts': [arrived_count_node_0, arrived_count_node_1, arrived_count_channel_total],
-    #     'success_amounts': [success_amount_node_0, success_amount_node_1, success_amount_channel_total],
-    #     'arrived_amounts': [arrived_amount_node_0, arrived_amount_node_1, arrived_amount_channel_total],
-    #     'success_rates': [success_rate_node_0, success_rate_node_1, success_rate_channel_total],
-    #     'normalized_throughputs': [normalized_throughput_node_0, normalized_throughput_node_1, normalized_throughput_channel_total],
-    # }
-    #
-    # print("Total success rate: {:.2f}".format(success_count_channel_total/arrived_count_channel_total))
-    # print("Total normalized throughput: {:.2f}".format(success_amount_channel_total/arrived_amount_channel_total))
+    measurement_interval = [total_simulation_time_estimation*0.1, total_simulation_time_estimation*0.9]
 
-    results = {}
-    print("\n")
-    print("Initial fortune of node N = {}".format(node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]))
-    print("Total fortune of node N without pending swaps = {}".format(N.balances["L"] + N.balances["R"] + N.on_chain_budget))
-    print("Total fortune of node N with pending swaps = {}".format(N.balances["L"] + N.balances["R"] + N.on_chain_budget + N.swap_IN_amounts_in_progress["L"] + N.swap_IN_amounts_in_progress["R"] + N.swap_OUT_amounts_in_progress["L"] + N.swap_OUT_amounts_in_progress["R"]))
+    success_count_L_to_R = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status == "SUCCEEDED")))
+    success_count_R_to_L = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status == "SUCCEEDED")))
+    success_count_node_total = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "SUCCEEDED")))
+    arrived_count_L_to_R = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status != "PENDING")))
+    arrived_count_R_to_L = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status != "PENDING")))
+    arrived_count_node_total = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status != "PENDING")))
+    success_amount_L_to_R = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status == "SUCCEEDED")))
+    success_amount_R_to_L = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status == "SUCCEEDED")))
+    success_amount_node_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "SUCCEEDED")))
+    arrived_amount_L_to_R = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status != "PENDING")))
+    arrived_amount_R_to_L = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status != "PENDING")))
+    arrived_amount_node_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status != "PENDING")))
+    success_rate_L_to_R = success_count_L_to_R/arrived_count_L_to_R
+    success_rate_R_to_L = success_count_R_to_L/arrived_count_R_to_L
+    success_rate_node_total = success_count_node_total / arrived_count_node_total
+    normalized_throughput_L_to_R = success_amount_L_to_R/arrived_amount_L_to_R      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
+    normalized_throughput_R_to_L = success_amount_R_to_L/arrived_amount_R_to_L      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
+    normalized_throughput_node_total = success_amount_node_total/arrived_amount_node_total     # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
+
+    initial_fortune = node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]
+    final_fortune_without_pending_swaps = N.balances["L"] + N.balances["R"] + N.on_chain_budget
+    final_fortune_with_pending_swaps = N.balances["L"] + N.balances["R"] + N.on_chain_budget + N.swap_IN_amounts_in_progress["L"] + N.swap_IN_amounts_in_progress["R"] + N.swap_OUT_amounts_in_progress["L"] + N.swap_OUT_amounts_in_progress["R"]
 
     for t in all_transactions_list:
         del t.env
-
+        del t.cleared
     all_transactions_list = pd.DataFrame([vars(t) for t in all_transactions_list])
 
-    return results, all_transactions_list
+    # all_transaction_signatures = [t.get_transaction_signature() for t in all_transactions_list]
+    #
+    # # all_transaction_signatures = []
+    # # for t in all_transactions_list:
+    # #     transaction_signature = t.get_transaction_signature()
+    # #     all_transaction_signatures.append(transaction_signature)
 
+
+    results = {
+        'node_parameters': node_parameters,
+        'experiment_parameters': experiment_parameters,
+        'rebalancing_parameters': rebalancing_parameters,
+        'measurement_interval_length': measurement_interval[1] - measurement_interval[0],
+        'success_count_L_to_R': success_count_L_to_R,
+        'success_count_R_to_L': success_count_R_to_L,
+        'success_count_node_total': success_count_node_total,
+        'arrived_count_L_to_R': arrived_count_L_to_R,
+        'arrived_count_R_to_L': arrived_count_R_to_L,
+        'arrived_count_node_total': arrived_count_node_total,
+        'success_amount_L_to_R': success_amount_L_to_R,
+        'success_amount_R_to_L': success_amount_R_to_L,
+        'success_amount_node_total': success_amount_node_total,
+        'arrived_amount_L_to_R': arrived_amount_L_to_R,
+        'arrived_amount_R_to_L': arrived_amount_R_to_L,
+        'arrived_amount_node_total': arrived_amount_node_total,
+        'success_rate_L_to_R': success_rate_L_to_R,
+        'success_rate_R_to_L': success_rate_R_to_L,
+        'success_rate_node_total': success_rate_node_total,
+        'normalized_throughput_L_to_R': normalized_throughput_L_to_R,
+        'normalized_throughput_R_to_L': normalized_throughput_R_to_L,
+        'normalized_throughput_node_total': normalized_throughput_node_total,
+        'all_transactions_list': all_transactions_list,
+        # 'all_transaction_signatures': all_transaction_signatures
+        'initial_fortune': initial_fortune,
+        'final_fortune_without_pending_swaps': final_fortune_without_pending_swaps,
+        'final_fortune_with_pending_swaps': final_fortune_with_pending_swaps
+    }
+
+    print("Initial total fortune of node N = {}".format(initial_fortune))
+    print("Final total fortune of node N without pending swaps = {}".format(final_fortune_without_pending_swaps))
+    print("Final total fortune of node N with pending swaps = {}\n".format(final_fortune_with_pending_swaps))
+
+    return results
 
 # if __name__ == '__main__':
-#     simulate_channel()
+#     simulate_relay_node()

@@ -45,5 +45,9 @@ class Transaction:
             # yield self.env.process(self.current_node.process_transaction(self))                         # Once the channel belongs to the transaction, try to process it.
             self.current_node.process_transaction(self)                         # Once the channel belongs to the transaction, try to process it.
 
+    def get_transaction_signature(self):
+        transaction_signature = (self.time_of_arrival, self.source, self.destination, self.amount, self.status)
+        return transaction_signature
+
     def __repr__(self):
         return "%s->%s t=%.2f a=%d" % (self.source, self.destination, self.time_of_arrival, self.amount)
