@@ -121,7 +121,7 @@ class Node:
                         if self.verbose:
                             print("Time {:.2f}: SWAP-OUT initiated in channel N-{} with amount {}.". format(self.env.now, neighbor, swap_amount))
 
-                        if (self.balances["L"] < swap_amount) or (swap_amount < swap_out_fees):     # check the swap-out constraints
+                        if (self.balances[neighbor] < swap_amount) or (swap_amount < swap_out_fees):     # check the swap-out constraints
                             if self.verbose:
                                 print("Time {:.2f}: SWAP-OUT failed in channel N-{} with amount {}.".format(self.env.now, neighbor, swap_amount))
                             self.rebalancing_history_results.append("FAILED")
