@@ -32,11 +32,14 @@ par_seed_values = list(dict.fromkeys(par_seed_values))
 
 # Parse results
 
-final_fortune_with_pending_swaps_values = list(traj.f_get_from_runs('final_fortune_with_pending_swaps', fast_access=True).values())
-final_fortune_with_pending_swaps_values = np.reshape(np.array(final_fortune_with_pending_swaps_values), (len(par_fee_values), len(par_rebalancing_policy_values), len(par_seed_values)))
-final_fortune_with_pending_swaps_values_average = final_fortune_with_pending_swaps_values.mean(axis=2)
-final_fortune_with_pending_swaps_values_max = final_fortune_with_pending_swaps_values.max(axis=2)
-final_fortune_with_pending_swaps_values_min = final_fortune_with_pending_swaps_values.min(axis=2)
+# result = 'final_fortune_with_pending_swaps'
+result = 'success_rate_node_total'
+
+result_values = list(traj.f_get_from_runs(result, fast_access=True).values())
+result_values = np.reshape(np.array(result_values), (len(par_fee_values), len(par_rebalancing_policy_values), len(par_seed_values)))
+result_values_average = result_values.mean(axis=2)
+result_values_max = result_values.max(axis=2)
+result_values_min = result_values.min(axis=2)
 
 
 linestyles = ['solid', 'dashed', 'dashdot', 'dotted']
@@ -53,21 +56,21 @@ for rebalancing_policy_index, rebalancing_policy in enumerate(par_rebalancing_po
     color = colors[innermost_index]
 
     # Total throughput
-    ax1.plot(par_fee_values, final_fortune_with_pending_swaps_values_average[:, rebalancing_policy_index], label=rebalancing_policy, linestyle=linestyles[0], marker=markers[innermost_index], color=color, alpha=1)
-    # yerr_total = [final_fortune_with_pending_swaps_values_average[:, rebalancing_policy_index] - final_fortune_with_pending_swaps_values_min[:, rebalancing_policy_index], final_fortune_with_pending_swaps_values_max[:, rebalancing_policy_index] - final_fortune_with_pending_swaps_values_average[:, rebalancing_policy_index]]
-    # ax1.errorbar(par_proportional_fee_values, final_fortune_with_pending_swaps_values_average, yerr=yerr_total, fmt='none')
+    ax1.plot(par_fee_values, result_values_average[:, rebalancing_policy_index], label=rebalancing_policy, linestyle=linestyles[0], marker=markers[innermost_index], color=color, alpha=1)
+    # yerr_total = [result_values_average[:, rebalancing_policy_index] - result_values_min[:, rebalancing_policy_index], result_values_max[:, rebalancing_policy_index] - result_values_average[:, rebalancing_policy_index]]
+    # ax1.errorbar(par_proportional_fee_values, result_values_average, yerr=yerr_total, fmt='none')
 
     ax1.set_xscale('log')
     ax1.grid(True)
     # ax1.set_ylim(bottom=0)
-    ax1.set_xlabel(fee_studied + " value ($)")
-    ax1.set_ylabel("Total final fortune ($)")
+    ax1.set_xlabel(fee_studied + " value")
+    # ax1.set_ylabel("Total final fortune ($)")
 
     # Total throughput legend
     lines, labels = ax1.get_legend_handles_labels()
     legend = ax1.legend(lines, labels, loc='best')
 
-    fig.savefig(save_at_directory + filename + ".png", bbox_inches='tight')
+    fig.savefig(save_at_directory + filename + "_" + result + ".png", bbox_inches='tight')
     # fig.savefig(save_at_directory + filename + ".pdf", bbox_inches='tight')
 
     # legend_filename = filename + "_legend.png"

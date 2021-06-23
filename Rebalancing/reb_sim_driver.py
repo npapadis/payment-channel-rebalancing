@@ -78,15 +78,15 @@ def pypet_wrapper(traj):
 def main():
     # Create the environment
     env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
-                            filename='./results/results_02.hdf5',
+                            filename='./results/results_03.hdf5',
                             overwrite_file=True)
     traj = env.traj
     # EMPIRICAL_DATA_FILEPATH = "./creditcard-non-fraudulent-only-amounts-only.csv"
 
     # SIMULATION PARAMETERS
 
-    verbose = False
-    num_of_experiments = 10
+    verbose = True
+    num_of_experiments = 1
 
     base_fee = 4e-4
     proportional_fee = 1e-6
@@ -108,7 +108,7 @@ def main():
     initial_balance_R = 500
     capacity_R = 1000
     total_transactions_R_to_L = 500
-    exp_mean_R_to_L = 3 / 1     # transactions per minute
+    exp_mean_R_to_L = 6 / 1     # transactions per minute
     # amount_distribution_R_to_L = "constant"
     # amount_distribution_parameters_R_to_L = [10]                   # value of all transactions
     amount_distribution_R_to_L = "uniform"
@@ -130,7 +130,7 @@ def main():
     # default_swap_amount = server_min_swap_amount
     check_interval = 10     # minutes =  600 seconds
 
-    T_conf = 30     #minutes = 1800 seconds
+    T_conf = 30     # minutes = 1800 seconds
     miner_fee = 5
 
     # Encode parameters for pypet
@@ -171,8 +171,10 @@ def main():
 
     traj.f_explore(pypet.cartesian_product({
         # 'base_fee': [float(4*10**P) for P in list(range(-4, 2))],
-        'proportional_fee': [float(10**P) for P in list(range(-6, 0))],
-        'rebalancing_policy': ['none', 'autoloop'],
+        # 'base_fee': [40.0],
+        # 'proportional_fee': [float(10**P) for P in list(range(-6, 0))],
+        # 'rebalancing_policy': ['none', 'autoloop'],
+        'rebalancing_policy': ['autoloop'],
         'seed': seeds[1:traj.num_of_experiments + 1]
     }))
 
