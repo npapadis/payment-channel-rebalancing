@@ -17,11 +17,13 @@ def transaction_generator(env, topology, source, destination, total_transactions
         elif amount_distribution == "uniform":
             max_transaction_amount = amount_distribution_parameters[0]
             amount = random.randint(1, max_transaction_amount)
+            # amount = random.uniform(0.0, float(max_transaction_amount))
         elif amount_distribution == "gaussian":
             max_transaction_amount = amount_distribution_parameters[0]
             gaussian_mean = amount_distribution_parameters[1]
             gaussian_variance = amount_distribution_parameters[2]
             amount = round(max(1, min(max_transaction_amount, random.normal(gaussian_mean, gaussian_variance))))
+            # amount = max(0.00001, min(float(max_transaction_amount), random.normal(gaussian_mean, gaussian_variance)))
         # elif amount_distribution == "pareto":
         #     lower = amount_distribution_parameters[0]  # the lower end of the support
         #     shape = amount_distribution_parameters[1]  # the distribution shape parameter, also known as `a` or `alpha`

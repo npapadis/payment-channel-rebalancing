@@ -107,15 +107,19 @@ class Node:
                     if self.net_demands[neighbor] < 0:  # SWAP-IN
                         expected_time_to_depletion = self.balances[neighbor] / (- self.net_demands[neighbor])
                         if expected_time_to_depletion - self.rebalancing_parameters["check_interval"] < self.rebalancing_parameters["T_conf"]:
-                            swap_amount = self.max_swap_in_amount(neighbor)/2
+                            safety_margin_in_coins = - self.net_demands[neighbor] / self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
+                            swap_amount = self.max_swap_in_amount(neighbor) - safety_margin_in_coins
                             # swap_amount = self.max_swap_in_amount(neighbor)
                             yield self.env.process(self.swap_in(neighbor, swap_amount, rebalance_request))
-                        elif self.verbose:
-                            print("Time {:.2f}: SWAP not needed in channel N-{}.". format(self.env.now, neighbor))
+                        else:
+                            pass
+                            if self.verbose:
+                                print("Time {:.2f}: SWAP not needed in channel N-{}.". format(self.env.now, neighbor))
                     elif self.net_demands[neighbor] > 0:    # SWAP-OUT
                         expected_time_to_saturation = (self.capacities[neighbor] - self.balances[neighbor]) / self.net_demands[neighbor]
                         if expected_time_to_saturation - self.rebalancing_parameters["check_interval"] < self.rebalancing_parameters["T_conf"]:
-                            swap_amount = self.balances[neighbor]
+                            safety_margin_in_coins = self.net_demands[neighbor] / self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
+                            swap_amount = self.balances[neighbor] - safety_margin_in_coins
                             yield self.env.process(self.swap_out(neighbor, swap_amount, rebalance_request))
                         elif self.verbose:
                             print("Time {:.2f}: SWAP not needed in channel N-{}.". format(self.env.now, neighbor))
@@ -140,7 +144,12 @@ class Node:
         if self.verbose:
             print("Time {:.2f}: SWAP-IN initiated in channel N-{} with amount {}.".format(self.env.now, neighbor, swap_amount))
 
-        if self.on_chain_budget < swap_amount + swap_in_fees:
+        if swap_amount <= 0:
+            if self.verbose:
+                print("Time {:.2f}: SWAP-IN aborted due to violation of safety margin in channel N-{}.".format(self.env.now, neighbor))
+            self.rebalancing_history_results.append("FAILED")
+            self.rebalancing_history_end_times.append(self.env.now)
+        elif self.on_chain_budget < swap_amount + swap_in_fees:
             if self.verbose:
                 print("Time {:.2f}: SWAP-IN failed in channel N-{} with amount {}.".format(self.env.now, neighbor, swap_amount))
             self.rebalancing_history_results.append("FAILED")
@@ -179,7 +188,12 @@ class Node:
         if self.verbose:
             print("Time {:.2f}: SWAP-OUT initiated in channel N-{} with amount {}.".format(self.env.now, neighbor, swap_amount))
 
-        if (self.balances[neighbor] < swap_amount) or (swap_amount < swap_out_fees):  # check the swap-out constraints
+        if swap_amount <= 0:
+            if self.verbose:
+                print("Time {:.2f}: SWAP-OUT aborted due to violation of safety margin in channel N-{}.".format(self.env.now, neighbor))
+            self.rebalancing_history_results.append("FAILED")
+            self.rebalancing_history_end_times.append(self.env.now)
+        elif (self.balances[neighbor] < swap_amount) or (swap_amount < swap_out_fees):  # check the swap-out constraints
             if self.verbose:
                 print("Time {:.2f}: SWAP-OUT failed in channel N-{} with amount {}.".format(self.env.now, neighbor, swap_amount))
             self.rebalancing_history_results.append("FAILED")

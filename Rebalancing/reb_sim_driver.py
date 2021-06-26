@@ -58,7 +58,8 @@ def pypet_wrapper(traj):
         # "default_swap_amount": traj.default_swap_amount,
         "check_interval": traj.check_interval,
         "T_conf": traj.T_conf,
-        "miner_fee": traj.miner_fee
+        "miner_fee": traj.miner_fee,
+        "safety_margins_in_minutes": {"L": traj.safety_margin_in_minutes_L, "R": traj.safety_margin_in_minutes_R}
     }
 
     results = simulate_relay_node(node_parameters, experiment_parameters, rebalancing_parameters)
@@ -101,9 +102,9 @@ def main():
 
     # SIMULATION PARAMETERS
 
-    # verbose = True
-    verbose = False
-    num_of_experiments = 10
+    verbose = True
+    # verbose = False
+    num_of_experiments = 1
 
     base_fee = 4e-4
     proportional_fee = 1e-6*100000
@@ -151,6 +152,9 @@ def main():
     T_conf = 30     # minutes = 1800 seconds
     miner_fee = 5
 
+    safety_margin_in_minutes_L = T_conf/5
+    safety_margin_in_minutes_R = T_conf/5
+
     # Encode parameters for pypet
 
     traj.f_add_parameter('initial_balance_L', initial_balance_L, comment='Initial balance of node N in channel with node L')
@@ -180,6 +184,8 @@ def main():
     traj.f_add_parameter('check_interval', check_interval, comment='Time in seconds every which a check for rebalancing is performed')
     traj.f_add_parameter('T_conf', T_conf, comment='Confirmation time (seconds) for an on-chain transaction')
     traj.f_add_parameter('miner_fee', miner_fee, comment='Miner fee for an on-chain transaction')
+    traj.f_add_parameter('safety_margin_in_minutes_L', safety_margin_in_minutes_L, comment='Safety margin in minutes for swaps under the loopmax policy for node L')
+    traj.f_add_parameter('safety_margin_in_minutes_R', safety_margin_in_minutes_R, comment='Safety margin in minutes for swaps under the loopmax policy for node R')
 
     traj.f_add_parameter('verbose', verbose, comment='Verbose output')
     traj.f_add_parameter('num_of_experiments', num_of_experiments, comment='Repetitions of every experiment')
@@ -192,8 +198,8 @@ def main():
         # 'base_fee': [40.0],
         # 'proportional_fee': [float(10**P) for P in list(range(-6, 0))],
         # 'proportional_fee': [1e-6, 1e-5, 1e-4, 1e-3, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2],
-        'proportional_fee': [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.25],
-        'rebalancing_policy': ['none', 'autoloop', 'loopmax'],
+        # 'proportional_fee': [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.25],
+        # 'rebalancing_policy': ['none', 'autoloop', 'loopmax'],
         # 'rebalancing_policy': ['none', 'autoloop', 'autoloop-infrequent', 'loopmax'],
         # 'rebalancing_policy': ['autoloop'],
         # 'rebalancing_policy': ['autoloop-infrequent'],
