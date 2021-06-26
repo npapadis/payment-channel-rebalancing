@@ -21,7 +21,9 @@ class Node:
         self.time_to_check = self.env.event()
 
         self.balance_history_times = []
-        self.balance_history_values = []
+        self.balance_history_values = {"L": [], "R": []}
+        self.total_fortune_including_pending_swaps_times = []
+        self.total_fortune_including_pending_swaps_values = []
         self.rebalancing_history_start_times = []
         self.rebalancing_history_end_times = []
         self.rebalancing_history_types = []
@@ -38,7 +40,8 @@ class Node:
         self.balances[t.previous_node] += t.amount
         self.balances[t.next_node] -= (t.amount - self.calculate_fees(t.amount))
         self.balance_history_times.append(self.env.now)
-        self.balance_history_values.append(self.balances)
+        self.balance_history_values["L"].append(self.balances["L"])
+        self.balance_history_values["R"].append(self.balances["R"])
         t.status = "SUCCEEDED"
 
         if self.verbose:
@@ -59,6 +62,11 @@ class Node:
         # t.cleared.succeed()
         self.time_to_check.succeed()
         self.time_to_check = self.env.event()
+
+        self.total_fortune_including_pending_swaps_times.append(self.env.now)
+        total_fortune_including_pending_swaps = self.balances["L"] + self.balances["R"] + self.on_chain_budget + self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"] + self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]
+        self.total_fortune_including_pending_swaps_values.append(total_fortune_including_pending_swaps)
+
 
     def perform_rebalancing_if_needed(self, neighbor):
         if self.verbose:

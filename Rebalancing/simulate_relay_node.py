@@ -179,7 +179,18 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
         # 'all_transaction_signatures': all_transaction_signatures
         'initial_fortune': initial_fortune,
         'final_fortune_without_pending_swaps': final_fortune_without_pending_swaps,
-        'final_fortune_with_pending_swaps': final_fortune_with_pending_swaps
+        'final_fortune_with_pending_swaps': final_fortune_with_pending_swaps,
+
+        'balance_history_times': N.balance_history_times,
+        'balance_history_values_L': N.balance_history_values["L"],
+        'balance_history_values_R': N.balance_history_values["R"],
+        'total_fortune_including_pending_swaps_times': N.total_fortune_including_pending_swaps_times,
+        'total_fortune_including_pending_swaps_values': N.total_fortune_including_pending_swaps_values,
+        'rebalancing_history_start_times': N.rebalancing_history_start_times,
+        'rebalancing_history_end_times': N.rebalancing_history_end_times,
+        'rebalancing_history_types': N.rebalancing_history_types,
+        'rebalancing_history_amounts': N.rebalancing_history_amounts,
+        'rebalancing_history_results': N.rebalancing_history_results
     }
 
     print("Initial total fortune of node N = {}".format(initial_fortune))
