@@ -11,17 +11,24 @@ from pathlib import Path
 
 save_at_directory = "./figures/"
 Path(save_at_directory).mkdir(parents=True, exist_ok=True)
+
 # filename = 'results_01'
-filename = 'results_02'
+# filename = 'results_02'
+# filename = 'results_03'
+filename = 'results_05'
+
+# fee_studied = 'base_fee'
+fee_studied = 'proportional_fee'
+result = 'final_fortune_with_pending_swaps'
+# result = 'success_rate_node_total'
+
+
 
 traj = load_trajectory(filename='./results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_all=pypetconstants.LOAD_DATA)
 # traj = load_trajectory(filename='./results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_parameters=2, load_results=1)
 # traj.v_auto_load = True
 
 # Parse parameter values
-
-# fee_studied = 'base_fee'
-fee_studied = 'proportional_fee'
 
 par_fee_values = traj.f_get(fee_studied).f_get_range()
 par_fee_values = list(dict.fromkeys(par_fee_values))
@@ -31,9 +38,6 @@ par_seed_values = traj.f_get('seed').f_get_range()
 par_seed_values = list(dict.fromkeys(par_seed_values))
 
 # Parse results
-
-# result = 'final_fortune_with_pending_swaps'
-result = 'success_rate_node_total'
 
 result_values = list(traj.f_get_from_runs(result, fast_access=True).values())
 result_values = np.reshape(np.array(result_values), (len(par_fee_values), len(par_rebalancing_policy_values), len(par_seed_values)))

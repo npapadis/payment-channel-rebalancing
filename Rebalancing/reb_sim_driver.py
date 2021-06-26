@@ -10,6 +10,21 @@ from math import floor, ceil
 import numpy as np
 
 
+class Logger:
+
+    def __init__(self, filename):
+        self.console = sys.stdout
+        self.file = open(filename, 'w')
+
+    def write(self, message):
+        self.console.write(message)
+        self.file.write(message)
+
+    def flush(self):
+        self.console.flush()
+        self.file.flush()
+
+
 def pypet_wrapper(traj):
     node_parameters = {
         "initial_balance_L": traj.initial_balance_L,
@@ -78,25 +93,27 @@ def pypet_wrapper(traj):
 def main():
     # Create the environment
     env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
-                            filename='./results/results_03.hdf5',
+                            filename='./results/results_05.hdf5',
+                            log_stdout=True,
                             overwrite_file=True)
     traj = env.traj
     # EMPIRICAL_DATA_FILEPATH = "./creditcard-non-fraudulent-only-amounts-only.csv"
 
     # SIMULATION PARAMETERS
 
-    verbose = True
-    num_of_experiments = 1
+    # verbose = True
+    verbose = False
+    num_of_experiments = 10
 
     base_fee = 4e-4
-    proportional_fee = 1e-6
+    proportional_fee = 1e-6*100000
     on_chain_budget = 1000
 
     # Channel N-L
     initial_balance_L = 500
     capacity_L = 1000
-    total_transactions_L_to_R = 500
-    exp_mean_L_to_R = 6 / 1     # transactions per minute
+    total_transactions_L_to_R = 1000
+    exp_mean_L_to_R = 2 / 1     # transactions per minute
     # amount_distribution_L_to_R = "constant"
     # amount_distribution_parameters_L_to_R = [10]                  # value of all transactions
     amount_distribution_L_to_R = "uniform"
@@ -107,8 +124,8 @@ def main():
     # Channel N-R
     initial_balance_R = 500
     capacity_R = 1000
-    total_transactions_R_to_L = 500
-    exp_mean_R_to_L = 6 / 1     # transactions per minute
+    total_transactions_R_to_L = 1000
+    exp_mean_R_to_L = 1 / 1     # transactions per minute
     # amount_distribution_R_to_L = "constant"
     # amount_distribution_parameters_R_to_L = [10]                   # value of all transactions
     amount_distribution_R_to_L = "uniform"
@@ -123,7 +140,8 @@ def main():
 
     # Node parameters
     # rebalancing_policy = "none"
-    rebalancing_policy = "autoloop"
+    # rebalancing_policy = "autoloop"
+    rebalancing_policy = "loopmax"
     # rebalancing_policy_parameters = [0.2, 0.8, server_min_swap_amount]  # [min % balance, max % balance, margin from target to launch]
     lower_threshold = 0.2
     upper_threshold = 0.8
@@ -173,8 +191,12 @@ def main():
         # 'base_fee': [float(4*10**P) for P in list(range(-4, 2))],
         # 'base_fee': [40.0],
         # 'proportional_fee': [float(10**P) for P in list(range(-6, 0))],
-        # 'rebalancing_policy': ['none', 'autoloop'],
-        'rebalancing_policy': ['autoloop'],
+        # 'proportional_fee': [1e-6, 1e-5, 1e-4, 1e-3, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2],
+        'proportional_fee': [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.25],
+        'rebalancing_policy': ['none', 'autoloop', 'loopmax'],
+        # 'rebalancing_policy': ['none', 'autoloop', 'autoloop-infrequent', 'loopmax'],
+        # 'rebalancing_policy': ['autoloop'],
+        # 'rebalancing_policy': ['autoloop-infrequent'],
         'seed': seeds[1:traj.num_of_experiments + 1]
     }))
 
@@ -183,4 +205,7 @@ def main():
 
 
 if __name__ == '__main__':
+    log_path = './my_log.txt'
+    sys.stdout = Logger(log_path)
+
     main()
