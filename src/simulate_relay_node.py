@@ -3,8 +3,8 @@ import simpy
 import sys
 import pandas as pd
 
-from Rebalancing.Node import Node
-from Rebalancing.Transaction import Transaction
+from src.entities.Node import Node
+from src.entities.Transaction import Transaction
 
 
 def transaction_generator(env, topology, source, destination, total_transactions, exp_mean, amount_distribution, amount_distribution_parameters, all_transactions_list, verbose):
