@@ -136,8 +136,8 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     normalized_throughput_node_total = success_amount_node_total/arrived_amount_node_total     # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
 
     initial_fortune = node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]
-    final_fortune_without_pending_swaps = N.balances["L"] + N.balances["R"] + N.on_chain_budget
-    final_fortune_with_pending_swaps = N.balances["L"] + N.balances["R"] + N.on_chain_budget + N.swap_IN_amounts_in_progress["L"] + N.swap_IN_amounts_in_progress["R"] + N.swap_OUT_amounts_in_progress["L"] + N.swap_OUT_amounts_in_progress["R"]
+    final_fortune_without_pending_swaps = N.local_balances["L"] + N.local_balances["R"] + N.on_chain_budget
+    final_fortune_with_pending_swaps = N.local_balances["L"] + N.local_balances["R"] + N.on_chain_budget + N.swap_IN_amounts_in_progress["L"] + N.swap_IN_amounts_in_progress["R"] + N.swap_OUT_amounts_in_progress["L"] + N.swap_OUT_amounts_in_progress["R"]
 
     for t in all_transactions_list:
         del t.env
@@ -193,9 +193,9 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
         'rebalancing_history_results': N.rebalancing_history_results
     }
 
-    print("Initial total fortune of node N = {}".format(initial_fortune))
-    print("Final total fortune of node N without pending swaps = {}".format(final_fortune_without_pending_swaps))
-    print("Final total fortune of node N with pending swaps = {}\n".format(final_fortune_with_pending_swaps))
+    print("Initial total fortune of node N = {:.2f}".format(initial_fortune))
+    print("Final total fortune of node N without pending swaps = {:.2f}".format(final_fortune_without_pending_swaps))
+    print("Final total fortune of node N with pending swaps = {:.2f}\n".format(final_fortune_with_pending_swaps))
 
     return results
 
