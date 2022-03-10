@@ -90,6 +90,17 @@ def pypet_wrapper(traj):
     # traj.f_add_result('all_transactions_list', results['all_transactions_list'], 'All transactions')
     # traj.f_add_result('all_transaction_signatures', results['all_transaction_signatures'], 'All transactions')
 
+    traj.f_add_result('balance_history_times', results['balance_history_times'], comment='Balance history times')
+    traj.f_add_result('balance_history_values_L', results['balance_history_values_L'], comment='Balance history values for channel N-L')
+    traj.f_add_result('balance_history_values_R', results['balance_history_values_R'], comment='Balance history values for channel N-R')
+    traj.f_add_result('total_fortune_including_pending_swaps_times', results['total_fortune_including_pending_swaps_times'], comment='Times for total fortune of node N including pending swaps')
+    traj.f_add_result('total_fortune_including_pending_swaps_values', results['total_fortune_including_pending_swaps_values'], comment='Values for total fortune of node N including pending swaps')
+    traj.f_add_result('rebalancing_history_start_times', results['rebalancing_history_start_times'], comment='Swap start times')
+    traj.f_add_result('rebalancing_history_end_times', results['rebalancing_history_end_times'], comment='Swap end times')
+    traj.f_add_result('rebalancing_history_types', results['rebalancing_history_types'], comment='Swap types')
+    traj.f_add_result('rebalancing_history_amounts', results['rebalancing_history_amounts'], comment='Swap amounts')
+    traj.f_add_result('rebalancing_history_results', results['rebalancing_history_results'], comment='Swap results (success/failure)')
+
 
 def main():
     # Create the environment
