@@ -114,7 +114,8 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
 
     # Calculate results
 
-    measurement_interval = [total_simulation_time_estimation*0.1, total_simulation_time_estimation*0.9]
+    # measurement_interval = [total_simulation_time_estimation*0.1, total_simulation_time_estimation*0.9]
+    measurement_interval = [total_simulation_time_estimation*0, total_simulation_time_estimation*1]
 
     success_count_L_to_R = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status == "SUCCEEDED")))
     success_count_R_to_L = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status == "SUCCEEDED")))
