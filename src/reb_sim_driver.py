@@ -5,7 +5,7 @@ import pandas as pd
 import pypet
 from simulate_relay_node import *
 import csv
-from statsmodels.distributions.empirical_distribution import ECDF
+# from statsmodels.distributions.empirical_distribution import ECDF
 from math import floor, ceil
 import numpy as np
 
@@ -68,12 +68,18 @@ def pypet_wrapper(traj):
     traj.f_add_result('success_count_L_to_R', results['success_count_L_to_R'], comment='Number of successful transactions from L to R')
     traj.f_add_result('success_count_R_to_L', results['success_count_R_to_L'], comment='Number of successful transactions from R to L')
     traj.f_add_result('success_count_node_total', results['success_count_node_total'], comment='Number of successful transactions (node total)')
+    traj.f_add_result('failure_count_L_to_R', results['failure_count_L_to_R'], comment='Number of failed transactions from L to R')
+    traj.f_add_result('failure_count_R_to_L', results['failure_count_R_to_L'], comment='Number of failed transactions from R to L')
+    traj.f_add_result('failure_count_node_total', results['failure_count_node_total'], comment='Number of failed transactions (node total)')
     traj.f_add_result('arrived_count_L_to_R', results['arrived_count_L_to_R'], comment='Number of transactions that arrived from L to R')
     traj.f_add_result('arrived_count_R_to_L', results['arrived_count_R_to_L'], comment='Number of transactions that arrived from R to L')
     traj.f_add_result('arrived_count_node_total', results['arrived_count_node_total'], comment='Number of transactions that arrived (node total)')
     traj.f_add_result('success_amount_L_to_R', results['success_amount_L_to_R'], comment='Throughput (Amount of successful transactions) from L to R')
     traj.f_add_result('success_amount_R_to_L', results['success_amount_R_to_L'], comment='Throughput (Amount of successful transactions) from R to L')
     traj.f_add_result('success_amount_node_total', results['success_amount_node_total'], comment='Throughput (Amount of successful transactions) (node total)')
+    traj.f_add_result('failure_amount_L_to_R', results['failure_amount_L_to_R'], comment='Blockage (Amount of failed transactions) from L to R')
+    traj.f_add_result('failure_amount_R_to_L', results['failure_amount_R_to_L'], comment='Blockage (Amount of failed transactions) from R to L')
+    traj.f_add_result('failure_amount_node_total', results['failure_amount_node_total'], comment='Blockage (Amount of failed transactions) (node total)')
     traj.f_add_result('arrived_amount_L_to_R', results['arrived_amount_L_to_R'], comment='Amount of transactions that arrived from L to R')
     traj.f_add_result('arrived_amount_R_to_L', results['arrived_amount_R_to_L'], comment='Amount of transactions that arrived from R to L')
     traj.f_add_result('arrived_amount_node_total', results['arrived_amount_node_total'], comment='Amount of transactions that arrived (node total)')
@@ -86,6 +92,7 @@ def pypet_wrapper(traj):
     traj.f_add_result('initial_fortune', results['initial_fortune'], comment='Initial fortune of node')
     traj.f_add_result('final_fortune_without_pending_swaps', results['final_fortune_without_pending_swaps'], comment='Final total fortune of node N without pending swaps')
     traj.f_add_result('final_fortune_with_pending_swaps', results['final_fortune_with_pending_swaps'], comment='Final total fortune of node N with pending swaps')
+    traj.f_add_result('final_fortune_with_pending_swaps_minus_losses', results['final_fortune_with_pending_swaps_minus_losses'], comment='Final total fortune of node N with pending swaps minus fee losses')
 
     # traj.f_add_result('all_transactions_list', results['all_transactions_list'], 'All transactions')
     # traj.f_add_result('all_transaction_signatures', results['all_transaction_signatures'], 'All transactions')
@@ -95,6 +102,12 @@ def pypet_wrapper(traj):
     traj.f_add_result('balance_history_values_R', results['balance_history_values_R'], comment='Balance history values for channel N-R')
     traj.f_add_result('total_fortune_including_pending_swaps_times', results['total_fortune_including_pending_swaps_times'], comment='Times for total fortune of node N including pending swaps')
     traj.f_add_result('total_fortune_including_pending_swaps_values', results['total_fortune_including_pending_swaps_values'], comment='Values for total fortune of node N including pending swaps')
+    traj.f_add_result('total_fortune_including_pending_swaps_minus_losses_values', results['total_fortune_including_pending_swaps_minus_losses_values'], comment='Values for total fortune of node N including pending swaps minus fee losses')
+    traj.f_add_result('cumulative_fee_losses', results['cumulative_fee_losses'], comment='Cumulative fee losses of node N from dropped transactions for the entire duration of the simulation')
+    traj.f_add_result('cumulative_rebalancing_fees', results['cumulative_rebalancing_fees'], comment='Cumulative fees paid by node N for rebalancing operations for the entire duration of the simulation')
+    traj.f_add_result('fee_losses_over_time', results['fee_losses_over_time'], comment='Fee losses of node N from dropped transactions measured at times of transaction processing')
+    traj.f_add_result('rebalancing_fees_over_time', results['rebalancing_fees_over_time'], comment='Rebalancing fees paid by node N measured at times of transaction processing')
+
     traj.f_add_result('rebalancing_history_start_times', results['rebalancing_history_start_times'], comment='Swap start times')
     traj.f_add_result('rebalancing_history_end_times', results['rebalancing_history_end_times'], comment='Swap end times')
     traj.f_add_result('rebalancing_history_types', results['rebalancing_history_types'], comment='Swap types')
@@ -105,7 +118,7 @@ def pypet_wrapper(traj):
 def main():
     # Create the environment
     env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
-                            filename='./results/results_05.hdf5',
+                            filename='outputs/results/results_05.hdf5',
                             log_stdout=True,
                             overwrite_file=True)
     traj = env.traj
@@ -113,55 +126,55 @@ def main():
 
     # SIMULATION PARAMETERS
 
-    verbose = True
-    # verbose = False
+    # verbose = True
+    verbose = False
     num_of_experiments = 1
 
-    base_fee = 4e-4
-    proportional_fee = 1e-6*100000
+    base_fee = 0    # 4e-4
+    proportional_fee = 0.05 # 4e-5
     on_chain_budget = 1000
 
     # Channel N-L
     initial_balance_L = 500
     capacity_L = 1000
-    total_transactions_L_to_R = 1000
+    total_transactions_L_to_R = 20000
     exp_mean_L_to_R = 2 / 1     # transactions per minute
     # amount_distribution_L_to_R = "constant"
     # amount_distribution_parameters_L_to_R = [10]                  # value of all transactions
     amount_distribution_L_to_R = "uniform"
     amount_distribution_parameters_L_to_R = [30]                # max_transaction_amount
     # amount_distribution_L_to_R = "gaussian"
-    # amount_distribution_parameters_L_to_R = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
+    # amount_distribution_parameters_L_to_R = [150, 75, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # Channel N-R
     initial_balance_R = 500
     capacity_R = 1000
-    total_transactions_R_to_L = 1000
+    total_transactions_R_to_L = 10000
     exp_mean_R_to_L = 1 / 1     # transactions per minute
     # amount_distribution_R_to_L = "constant"
     # amount_distribution_parameters_R_to_L = [10]                   # value of all transactions
     amount_distribution_R_to_L = "uniform"
     amount_distribution_parameters_R_to_L = [30]                # max_transaction_amount
     # amount_distribution_R_to_L = "gaussian"
-    # amount_distribution_parameters_R_to_L = [300, 100, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
+    # amount_distribution_parameters_R_to_L = [150, 75, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # REBALANCING
     # LSP parameters
     # server_min_swap_amount = 100
-    server_swap_fee = 0.005      # fraction of swap amount
+    server_swap_fee = 0.05      # fraction of swap amount
 
     # Node parameters
     # rebalancing_policy = "none"
     # rebalancing_policy = "autoloop"
     rebalancing_policy = "loopmax"
     # rebalancing_policy_parameters = [0.2, 0.8, server_min_swap_amount]  # [min % balance, max % balance, margin from target to launch]
-    lower_threshold = 0.2
-    upper_threshold = 0.8
+    lower_threshold = 0.3
+    upper_threshold = 0.7
     # default_swap_amount = server_min_swap_amount
-    check_interval = 10     # minutes =  600 seconds
+    check_interval = 5     # minutes
 
-    T_conf = 30     # minutes = 1800 seconds
-    miner_fee = 5
+    T_conf = 10     # minutes
+    miner_fee = 2
 
     safety_margin_in_minutes_L = T_conf/5
     safety_margin_in_minutes_R = T_conf/5
@@ -189,8 +202,8 @@ def main():
     # traj.f_add_parameter('server_min_swap_amount', server_min_swap_amount, comment='Minimum amount the LSP allows for a swap')
     traj.f_add_parameter('server_swap_fee', server_swap_fee, comment='Percentage of swap amount the LSP charges as fees')
     traj.f_add_parameter('rebalancing_policy', rebalancing_policy, comment='Rebalancing policy')
-    traj.f_add_parameter('lower_threshold', lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in')
-    traj.f_add_parameter('upper_threshold', upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out')
+    traj.f_add_parameter('lower_threshold', lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in according to the autoloop policy')
+    traj.f_add_parameter('upper_threshold', upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out according to the autoloop policy')
     # traj.f_add_parameter('default_swap_amount', default_swap_amount, comment='Default swap amount node N requests')
     traj.f_add_parameter('check_interval', check_interval, comment='Time in seconds every which a check for rebalancing is performed')
     traj.f_add_parameter('T_conf', T_conf, comment='Confirmation time (seconds) for an on-chain transaction')
@@ -208,13 +221,18 @@ def main():
         # 'base_fee': [float(4*10**P) for P in list(range(-4, 2))],
         # 'base_fee': [40.0],
         # 'proportional_fee': [float(10**P) for P in list(range(-6, 0))],
-        # 'proportional_fee': [1e-6, 1e-5, 1e-4, 1e-3, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2],
+        'proportional_fee': [1e-4, 1e-3, 0.01, 0.05, 0.1, 0.2],
         # 'proportional_fee': [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.25],
-        # 'rebalancing_policy': ['none', 'autoloop', 'loopmax'],
+        # 'proportional_fee': [0.01, 0.05, 0.1, 0.2, 0.25],
+        # 'proportional_fee': [0.1],
+        # 'proportional_fee': [0.02],
+        # 'upper_threshold': [0.7, 0.8, 0.9, 0.95, 0.99],
+        # 'upper_threshold': [0.7],
+        'rebalancing_policy': ['none', 'autoloop', 'loopmax'],
         # 'rebalancing_policy': ['none', 'autoloop', 'autoloop-infrequent', 'loopmax'],
         # 'rebalancing_policy': ['autoloop'],
         # 'rebalancing_policy': ['autoloop-infrequent'],
-        'seed': seeds[1:traj.num_of_experiments + 1]
+        'seed': seeds[0:traj.num_of_experiments]
     }))
 
     # Run wrapping function instead of simulator directly

@@ -119,12 +119,18 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     success_count_L_to_R = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status == "SUCCEEDED")))
     success_count_R_to_L = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status == "SUCCEEDED")))
     success_count_node_total = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "SUCCEEDED")))
+    failure_count_L_to_R = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status == "FAILED")))
+    failure_count_R_to_L = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status == "FAILED")))
+    failure_count_node_total = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "FAILED")))
     arrived_count_L_to_R = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status != "PENDING")))
     arrived_count_R_to_L = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status != "PENDING")))
     arrived_count_node_total = sum(1 for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status != "PENDING")))
     success_amount_L_to_R = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status == "SUCCEEDED")))
     success_amount_R_to_L = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status == "SUCCEEDED")))
     success_amount_node_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "SUCCEEDED")))
+    failure_amount_L_to_R = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status == "FAILED")))
+    failure_amount_R_to_L = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status == "FAILED")))
+    failure_amount_node_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status == "FAILED")))
     arrived_amount_L_to_R = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status != "PENDING")))
     arrived_amount_R_to_L = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status != "PENDING")))
     arrived_amount_node_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status != "PENDING")))
@@ -137,7 +143,9 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
 
     initial_fortune = node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]
     final_fortune_without_pending_swaps = N.local_balances["L"] + N.local_balances["R"] + N.on_chain_budget
-    final_fortune_with_pending_swaps = N.local_balances["L"] + N.local_balances["R"] + N.on_chain_budget + N.swap_IN_amounts_in_progress["L"] + N.swap_IN_amounts_in_progress["R"] + N.swap_OUT_amounts_in_progress["L"] + N.swap_OUT_amounts_in_progress["R"]
+    final_fortune_with_pending_swaps = final_fortune_without_pending_swaps + N.swap_IN_amounts_in_progress["L"] + N.swap_IN_amounts_in_progress["R"] + N.swap_OUT_amounts_in_progress["L"] + N.swap_OUT_amounts_in_progress["R"]
+    final_fortune_with_pending_swaps_minus_losses = final_fortune_with_pending_swaps - (N.fees[0] * failure_count_node_total + N.fees[1] * failure_amount_node_total)
+
 
     for t in all_transactions_list:
         del t.env
@@ -160,12 +168,18 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
         'success_count_L_to_R': success_count_L_to_R,
         'success_count_R_to_L': success_count_R_to_L,
         'success_count_node_total': success_count_node_total,
+        'failure_count_L_to_R': failure_count_L_to_R,
+        'failure_count_R_to_L': failure_count_R_to_L,
+        'failure_count_node_total': failure_count_node_total,
         'arrived_count_L_to_R': arrived_count_L_to_R,
         'arrived_count_R_to_L': arrived_count_R_to_L,
         'arrived_count_node_total': arrived_count_node_total,
         'success_amount_L_to_R': success_amount_L_to_R,
         'success_amount_R_to_L': success_amount_R_to_L,
         'success_amount_node_total': success_amount_node_total,
+        'failure_amount_L_to_R': failure_amount_L_to_R,
+        'failure_amount_R_to_L': failure_amount_R_to_L,
+        'failure_amount_node_total': failure_amount_node_total,
         'arrived_amount_L_to_R': arrived_amount_L_to_R,
         'arrived_amount_R_to_L': arrived_amount_R_to_L,
         'arrived_amount_node_total': arrived_amount_node_total,
@@ -180,12 +194,18 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
         'initial_fortune': initial_fortune,
         'final_fortune_without_pending_swaps': final_fortune_without_pending_swaps,
         'final_fortune_with_pending_swaps': final_fortune_with_pending_swaps,
+        'final_fortune_with_pending_swaps_minus_losses': final_fortune_with_pending_swaps_minus_losses,
 
         'balance_history_times': N.balance_history_times,
         'balance_history_values_L': N.balance_history_values["L"],
         'balance_history_values_R': N.balance_history_values["R"],
         'total_fortune_including_pending_swaps_times': N.total_fortune_including_pending_swaps_times,
         'total_fortune_including_pending_swaps_values': N.total_fortune_including_pending_swaps_values,
+        'total_fortune_including_pending_swaps_minus_losses_values': N.total_fortune_including_pending_swaps_minus_losses_values,
+        'cumulative_fee_losses': N.cumulative_fee_losses,
+        'cumulative_rebalancing_fees': N.cumulative_rebalancing_fees,
+        'fee_losses_over_time': N.fee_losses_over_time,
+        'rebalancing_fees_over_time': N.rebalancing_fees_over_time,
         'rebalancing_history_start_times': N.rebalancing_history_start_times,
         'rebalancing_history_end_times': N.rebalancing_history_end_times,
         'rebalancing_history_types': N.rebalancing_history_types,

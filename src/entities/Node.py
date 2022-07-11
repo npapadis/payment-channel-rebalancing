@@ -9,12 +9,12 @@ class Node:
         self.capacities = {"L": node_parameters["capacity_L"], "R": node_parameters["capacity_R"]}
         self.fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
         self.on_chain_budget = node_parameters["on_chain_budget"]
-        self.swap_IN_amounts_in_progress = {"L": 0, "R": 0}
-        self.swap_OUT_amounts_in_progress = {"L": 0, "R": 0}
+        self.swap_IN_amounts_in_progress = {"L": 0.0, "R": 0.0}
+        self.swap_OUT_amounts_in_progress = {"L": 0.0, "R": 0.0}
         self.rebalancing_parameters = rebalancing_parameters
         self.verbose = verbose
         self.demand_estimates = demand_estimates
-        self.net_demands = {"L": 0, "R": 0}
+        self.net_demands = {"L": 0.0, "R": 0.0}
 
         self.node_processor = simpy.Resource(env, capacity=1)
         self.rebalancing_locks = {"L": simpy.Resource(env, capacity=1), "R": simpy.Resource(env, capacity=1)}     # max 1 rebalancing operation active at a time
@@ -25,6 +25,12 @@ class Node:
         self.balance_history_values = {"L": [], "R": []}
         self.total_fortune_including_pending_swaps_times = []
         self.total_fortune_including_pending_swaps_values = []
+        self.total_fortune_including_pending_swaps_minus_losses_values = []
+        self.fee_losses_over_time = []
+        self.cumulative_fee_losses = 0.0
+        self.rebalancing_fees_since_last_transaction = 0.0
+        self.rebalancing_fees_over_time = []
+        self.cumulative_rebalancing_fees = 0.0
         self.rebalancing_history_start_times = []
         self.rebalancing_history_end_times = []
         self.rebalancing_history_types = []
@@ -60,15 +66,24 @@ class Node:
     def process_transaction(self, t):
         if (t.amount >= self.calculate_fees(t.amount)) and (t.amount <= self.remote_balances[t.previous_node]) and (t.amount - self.calculate_fees(t.amount) <= self.local_balances[t.next_node]):
             self.execute_feasible_transaction(t)
+            fee_losses_of_this_transaction = 0.0
         else:
             self.reject_transaction(t)
+            fee_losses_of_this_transaction = self.calculate_fees(t.amount)
         # t.cleared.succeed()
         self.time_to_check.succeed()
         self.time_to_check = self.env.event()
 
         self.total_fortune_including_pending_swaps_times.append(self.env.now)
         total_fortune_including_pending_swaps = self.local_balances["L"] + self.local_balances["R"] + self.on_chain_budget + self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"] + self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]
+        total_fortune_including_pending_swaps_minus_losses = total_fortune_including_pending_swaps - self.cumulative_fee_losses
         self.total_fortune_including_pending_swaps_values.append(total_fortune_including_pending_swaps)
+        self.total_fortune_including_pending_swaps_minus_losses_values.append(total_fortune_including_pending_swaps_minus_losses)
+        self.fee_losses_over_time.append(fee_losses_of_this_transaction)
+        self.cumulative_fee_losses += fee_losses_of_this_transaction
+        self.rebalancing_fees_over_time.append(self.rebalancing_fees_since_last_transaction)    # We register rebalancing fees only when the next transaction arrives, and not at the actual time the rebalancing starts.
+        self.cumulative_rebalancing_fees += self.rebalancing_fees_since_last_transaction
+        self.rebalancing_fees_since_last_transaction = 0.0
 
 
     def perform_rebalancing_if_needed(self, neighbor):
@@ -152,7 +167,7 @@ class Node:
 
         self.rebalancing_history_start_times.append(self.env.now)
         self.rebalancing_history_types.append(neighbor + "-IN")
-        self.rebalancing_history_amounts.append(swap_amount)
+        self.rebalancing_history_amounts.append(swap_amount)        #TODO: this amount representation is different than in the theoretical model. This doesn't affect the correctness though.
         if self.verbose:
             print("Time {:.2f}: SWAP-IN initiated in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
 
@@ -169,13 +184,15 @@ class Node:
         else:
             self.on_chain_budget -= (swap_amount + swap_in_fees)
             self.swap_IN_amounts_in_progress[neighbor] += swap_amount
+            self.rebalancing_fees_since_last_transaction += swap_in_fees
             yield self.env.timeout(self.rebalancing_parameters["T_conf"])
 
             self.swap_IN_amounts_in_progress[neighbor] -= swap_amount
             if self.remote_balances[neighbor] < swap_amount:
                 if self.verbose:
                     print("Time {:.2f}: SWAP-IN failed in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
-                self.on_chain_budget += (swap_amount + swap_in_fees)
+                self.on_chain_budget += (swap_amount + swap_in_fees)                # Assumes immediate cancelation of swap-in operation and immediate refund
+                self.rebalancing_fees_since_last_transaction -= swap_in_fees        # Assumes immediate cancelation of swap-in operation and immediate refund
                 self.rebalancing_history_results.append("FAILED")
                 self.rebalancing_history_end_times.append(self.env.now)
             else:
@@ -184,6 +201,9 @@ class Node:
 
                 self.rebalancing_history_results.append("SUCCEEDED")
                 self.rebalancing_history_end_times.append(self.env.now)
+                self.balance_history_times.append(self.env.now)
+                self.balance_history_values["L"].append(self.local_balances["L"])
+                self.balance_history_values["R"].append(self.local_balances["R"])
                 if self.verbose:
                     print("Time {:.2f}: SWAP-IN completed in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
                     print("Time {:.2f}: New balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
@@ -201,7 +221,7 @@ class Node:
         if self.verbose:
             print("Time {:.2f}: SWAP-OUT initiated in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
 
-        if swap_amount <= 0:
+        if swap_amount <= 0:    # only possible under the Loopmax policy
             if self.verbose:
                 print("Time {:.2f}: SWAP-OUT aborted due to violation of safety margin in channel N-{}.".format(self.env.now, neighbor))
             self.rebalancing_history_results.append("ABORTED")
@@ -214,6 +234,7 @@ class Node:
         else:
             self.local_balances[neighbor] -= swap_amount
             self.swap_OUT_amounts_in_progress[neighbor] += (swap_amount - swap_out_fees)
+            self.rebalancing_fees_since_last_transaction += swap_out_fees
             yield self.env.timeout(self.rebalancing_parameters["T_conf"])
             self.on_chain_budget += (swap_amount - swap_out_fees)
             self.remote_balances[neighbor] += swap_amount
@@ -221,6 +242,9 @@ class Node:
 
             self.rebalancing_history_results.append("SUCCEEDED")
             self.rebalancing_history_end_times.append(self.env.now)
+            self.balance_history_times.append(self.env.now)
+            self.balance_history_values["L"].append(self.local_balances["L"])
+            self.balance_history_values["R"].append(self.local_balances["R"])
             if self.verbose:
                 print("Time {:.2f}: SWAP-OUT completed in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
                 print("Time {:.2f}: New balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
