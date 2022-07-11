@@ -9,7 +9,8 @@ from pathlib import Path
 
 # from save_legend import save_legend
 
-save_at_directory = "./figures/"
+outputs_directory = str(Path("../outputs").resolve())
+save_at_directory = outputs_directory + "/figures/"
 Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 
 # filename = 'results_01'
@@ -20,12 +21,13 @@ filename = 'results_05'
 # fee_studied = 'base_fee'
 fee_studied = 'proportional_fee'
 result = 'final_fortune_with_pending_swaps'
+# result = 'final_fortune_with_pending_swaps_minus_losses'
 # result = 'success_rate_node_total'
 
 
 
-traj = load_trajectory(filename='./results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_all=pypetconstants.LOAD_DATA)
-# traj = load_trajectory(filename='./results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_parameters=2, load_results=1)
+traj = load_trajectory(filename=outputs_directory + '/results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_all=pypetconstants.LOAD_DATA)
+# traj = load_trajectory(filename=outputs_directory + '/results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_parameters=2, load_results=1)
 # traj.v_auto_load = True
 
 # Parse parameter values
@@ -68,7 +70,7 @@ for rebalancing_policy_index, rebalancing_policy in enumerate(par_rebalancing_po
     ax1.grid(True)
     # ax1.set_ylim(bottom=0)
     ax1.set_xlabel(fee_studied + " value")
-    # ax1.set_ylabel("Total final fortune ($)")
+    ax1.set_ylabel("Total final fortune ($)")
 
     # Total throughput legend
     lines, labels = ax1.get_legend_handles_labels()

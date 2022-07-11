@@ -9,7 +9,8 @@ from pathlib import Path
 
 # from save_legend import save_legend
 
-save_at_directory = "./figures/"
+outputs_directory = str(Path("../outputs").resolve())
+save_at_directory = outputs_directory + "/figures/"
 Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 
 # filename = 'results_01'
@@ -19,11 +20,12 @@ filename = 'results_05'
 
 times = 'total_fortune_including_pending_swaps_times'
 result = 'total_fortune_including_pending_swaps_values'
+# result = 'total_fortune_including_pending_swaps_minus_losses_values'
 
 number_of_points_to_plot = 200
 
-traj = load_trajectory(filename='./results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_all=pypetconstants.LOAD_DATA)
-# traj = load_trajectory(filename='./results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_parameters=2, load_results=1)
+traj = load_trajectory(filename=outputs_directory + '/results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_all=pypetconstants.LOAD_DATA)
+# traj = load_trajectory(filename=outputs_directory + '/results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_parameters=2, load_results=1)
 # traj.v_auto_load = True
 
 # Parse parameter values
