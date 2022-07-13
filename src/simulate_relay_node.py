@@ -65,26 +65,26 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     amount_distribution_R_to_L = experiment_parameters["amount_distribution_R_to_L"]
     amount_distribution_parameters_R_to_L = experiment_parameters["amount_distribution_parameters_R_to_L"]
 
-    demand_estimates = {"L": 0, "R": 0}
-    if amount_distribution_L_to_R == "constant":
-        demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[0]
-    elif amount_distribution_L_to_R == "uniform":
-        demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[0] / 2
-    elif amount_distribution_L_to_R == "gaussian":
-        demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[1]
-    else:
-        print("Input error: {} is not a supported amount distribution.".format(amount_distribution_L_to_R))
-        sys.exit(1)
-
-    if amount_distribution_R_to_L == "constant":
-        demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[0]
-    elif amount_distribution_R_to_L == "uniform":
-        demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[0] / 2
-    elif amount_distribution_R_to_L == "gaussian":
-        demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[1]
-    else:
-        print("Input error: {} is not a supported amount distribution.".format(amount_distribution_R_to_L))
-        sys.exit(1)
+    # demand_estimates = {"L": 0, "R": 0}
+    # if amount_distribution_L_to_R == "constant":
+    #     demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[0]
+    # elif amount_distribution_L_to_R == "uniform":
+    #     demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[0] / 2
+    # elif amount_distribution_L_to_R == "gaussian":
+    #     demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[1]
+    # else:
+    #     print("Input error: {} is not a supported amount distribution.".format(amount_distribution_L_to_R))
+    #     sys.exit(1)
+    #
+    # if amount_distribution_R_to_L == "constant":
+    #     demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[0]
+    # elif amount_distribution_R_to_L == "uniform":
+    #     demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[0] / 2
+    # elif amount_distribution_R_to_L == "gaussian":
+    #     demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[1]
+    # else:
+    #     print("Input error: {} is not a supported amount distribution.".format(amount_distribution_R_to_L))
+    #     sys.exit(1)
 
     verbose = experiment_parameters["verbose"]
     seed = experiment_parameters["seed"]
@@ -100,7 +100,8 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
 
     env = simpy.Environment()
 
-    N = Node(env, node_parameters, rebalancing_parameters, demand_estimates, verbose)
+    # N = Node(env, node_parameters, rebalancing_parameters, demand_estimates, verbose)
+    N = Node(env, node_parameters, rebalancing_parameters, verbose)
     env.process(N.run())
 
     topology = {"N": N}

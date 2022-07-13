@@ -2,7 +2,8 @@ import simpy
 
 
 class Node:
-    def __init__(self, env, node_parameters, rebalancing_parameters, demand_estimates, verbose):
+    # def __init__(self, env, node_parameters, rebalancing_parameters, demand_estimates, verbose):
+    def __init__(self, env, node_parameters, rebalancing_parameters, verbose):
         self.env = env
         self.local_balances = {"L": node_parameters["initial_balance_L"], "R": node_parameters["initial_balance_R"]}
         self.remote_balances = {"L": node_parameters["capacity_L"] - node_parameters["initial_balance_L"], "R": node_parameters["capacity_R"] - node_parameters["initial_balance_R"]}
@@ -13,7 +14,10 @@ class Node:
         self.swap_OUT_amounts_in_progress = {"L": 0.0, "R": 0.0}
         self.rebalancing_parameters = rebalancing_parameters
         self.verbose = verbose
-        self.demand_estimates = demand_estimates
+        self.latest_transactions_buffer_size = 20
+        self.latest_transactions_times = {"L": [], "R": []}
+        self.latest_transactions_amounts = {"L": [], "R": []}
+        self.demand_estimates = {"L": 0.0, "R": 0.0}
         self.net_demands = {"L": 0.0, "R": 0.0}
 
         self.node_processor = simpy.Resource(env, capacity=1)
@@ -64,6 +68,15 @@ class Node:
             print("Time {:.2f}: New balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
 
     def process_transaction(self, t):
+        # Update the memory of the latest transactions
+        if len(self.latest_transactions_times[t.source]) >= self.latest_transactions_buffer_size:
+            self.latest_transactions_times[t.source].pop(0)
+        self.latest_transactions_times[t.source].append(t.time_of_arrival)
+        if len(self.latest_transactions_amounts[t.source]) >= self.latest_transactions_buffer_size:
+            self.latest_transactions_amounts[t.source].pop(0)
+        self.latest_transactions_amounts[t.source].append(t.amount)
+
+        # If feasible, execute; otherwise, reject
         if (t.amount >= self.calculate_fees(t.amount)) and (t.amount <= self.remote_balances[t.previous_node]) and (t.amount - self.calculate_fees(t.amount) <= self.local_balances[t.next_node]):
             self.execute_feasible_transaction(t)
             fee_losses_of_this_transaction = 0.0
@@ -74,6 +87,7 @@ class Node:
         self.time_to_check.succeed()
         self.time_to_check = self.env.event()
 
+        # Update logs and metrics
         self.total_fortune_including_pending_swaps_times.append(self.env.now)
         total_fortune_including_pending_swaps = self.local_balances["L"] + self.local_balances["R"] + self.on_chain_budget + self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"] + self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]
         total_fortune_including_pending_swaps_minus_losses = total_fortune_including_pending_swaps - self.cumulative_fee_losses
@@ -129,7 +143,12 @@ class Node:
 
                 elif self.rebalancing_parameters["rebalancing_policy"] == "loopmax":
                     other_neighbor = "R" if neighbor == "L" else "L"
+
+                    for n in [neighbor, other_neighbor]:
+                        self.demand_estimates[n] = sum(self.latest_transactions_amounts[n]) / (self.latest_transactions_times[n][-1] - self.latest_transactions_times[n][0])
+
                     self.net_demands[neighbor] = self.demand_estimates[neighbor] - (self.demand_estimates[other_neighbor] - self.calculate_fees(self.demand_estimates[other_neighbor]))
+
                     if self.net_demands[neighbor] < 0:  # SWAP-IN
                         expected_time_to_depletion = self.local_balances[neighbor] / (- self.net_demands[neighbor])
                         if expected_time_to_depletion - self.rebalancing_parameters["check_interval"] < self.rebalancing_parameters["T_conf"]:
