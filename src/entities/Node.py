@@ -42,18 +42,28 @@ class Node:
         self.rebalancing_history_results = []
 
 
-    def calculate_relay_fees(self, amount):
-        return self.fees[0] + amount*self.fees[1]
+    def calculate_relay_fees(self, transaction_amount):
+        if transaction_amount <= 0:
+            relay_fees = 0
+        else:
+            relay_fees = self.fees[0] + transaction_amount*self.fees[1]
+        return relay_fees
 
     def calculate_swap_in_fees(self, swap_in_amount):
         # swap_in_amount is the net amount that is moving IN THE CHANNEL: it DOES NOT include the fees
-        swap_in_fees = swap_in_amount * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
+        if swap_in_amount <= 0:
+            swap_in_fees = 0
+        else:
+            swap_in_fees = swap_in_amount * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
         return swap_in_fees
 
     def calculate_swap_out_fees(self, swap_out_amount):
         # swap_out_amount is the net amount that is moving IN THE CHANNEL: it DOES include the fees
-        net_amount_to_be_added_on_chain = (swap_out_amount - self.rebalancing_parameters["miner_fee"]) / (1 + self.rebalancing_parameters["server_swap_fee"])
-        swap_out_fees = net_amount_to_be_added_on_chain * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
+        if swap_out_amount <= 0:
+            swap_out_fees = 0
+        else:
+            net_amount_to_be_added_on_chain = (swap_out_amount - self.rebalancing_parameters["miner_fee"]) / (1 + self.rebalancing_parameters["server_swap_fee"])
+            swap_out_fees = net_amount_to_be_added_on_chain * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
         return swap_out_fees
 
     def execute_feasible_transaction(self, t):
