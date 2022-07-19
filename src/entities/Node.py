@@ -42,16 +42,27 @@ class Node:
         self.rebalancing_history_results = []
 
 
-    def calculate_fees(self, amount):
+    def calculate_relay_fees(self, amount):
         return self.fees[0] + amount*self.fees[1]
+
+    def calculate_swap_in_fees(self, swap_in_amount):
+        # swap_in_amount is the net amount that is moving IN THE CHANNEL: it DOES NOT include the fees
+        swap_in_fees = swap_in_amount * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
+        return swap_in_fees
+
+    def calculate_swap_out_fees(self, swap_out_amount):
+        # swap_out_amount is the net amount that is moving IN THE CHANNEL: it DOES include the fees
+        net_amount_to_be_added_on_chain = (swap_out_amount - self.rebalancing_parameters["miner_fee"]) / (1 + self.rebalancing_parameters["server_swap_fee"])
+        swap_out_fees = net_amount_to_be_added_on_chain * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
+        return swap_out_fees
 
     def execute_feasible_transaction(self, t):
         # Calling this function requires checking for transaction feasibility beforehand. The function itself does not perform any checks, and this could lead to negative balances if misused.
 
         self.local_balances[t.previous_node] += t.amount
         self.remote_balances[t.previous_node] -= t.amount
-        self.local_balances[t.next_node] -= (t.amount - self.calculate_fees(t.amount))
-        self.remote_balances[t.next_node] += (t.amount - self.calculate_fees(t.amount))
+        self.local_balances[t.next_node] -= (t.amount - self.calculate_relay_fees(t.amount))
+        self.remote_balances[t.next_node] += (t.amount - self.calculate_relay_fees(t.amount))
         self.balance_history_times.append(self.env.now)
         self.balance_history_values["L"].append(self.local_balances["L"])
         self.balance_history_values["R"].append(self.local_balances["R"])
@@ -77,12 +88,12 @@ class Node:
         self.latest_transactions_amounts[t.source].append(t.amount)
 
         # If feasible, execute; otherwise, reject
-        if (t.amount >= self.calculate_fees(t.amount)) and (t.amount <= self.remote_balances[t.previous_node]) and (t.amount - self.calculate_fees(t.amount) <= self.local_balances[t.next_node]):
+        if (t.amount >= self.calculate_relay_fees(t.amount)) and (t.amount <= self.remote_balances[t.previous_node]) and (t.amount - self.calculate_relay_fees(t.amount) <= self.local_balances[t.next_node]):
             self.execute_feasible_transaction(t)
             fee_losses_of_this_transaction = 0.0
         else:
             self.reject_transaction(t)
-            fee_losses_of_this_transaction = self.calculate_fees(t.amount)
+            fee_losses_of_this_transaction = self.calculate_relay_fees(t.amount)
         # t.cleared.succeed()
         self.time_to_check.succeed()
         self.time_to_check = self.env.event()
@@ -147,7 +158,7 @@ class Node:
                     for n in [neighbor, other_neighbor]:
                         self.demand_estimates[n] = sum(self.latest_transactions_amounts[n]) / (self.latest_transactions_times[n][-1] - self.latest_transactions_times[n][0])
 
-                    self.net_demands[neighbor] = self.demand_estimates[neighbor] - (self.demand_estimates[other_neighbor] - self.calculate_fees(self.demand_estimates[other_neighbor]))
+                    self.net_demands[neighbor] = self.demand_estimates[neighbor] - (self.demand_estimates[other_neighbor] - self.calculate_relay_fees(self.demand_estimates[other_neighbor]))
 
                     if self.net_demands[neighbor] < 0:  # SWAP-IN
                         expected_time_to_depletion = self.local_balances[neighbor] / (- self.net_demands[neighbor])
@@ -182,7 +193,8 @@ class Node:
         return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.remote_balances[neighbor])
 
     def swap_in(self, neighbor, swap_amount, rebalance_request):
-        swap_in_fees = swap_amount * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
+        # swap_amount is the net amount that is moving IN THE CHANNEL: it DOES NOT include the fees
+        swap_in_fees = self.calculate_swap_in_fees(swap_amount)
 
         self.rebalancing_history_start_times.append(self.env.now)
         self.rebalancing_history_types.append(neighbor + "-IN")
@@ -214,7 +226,7 @@ class Node:
                 self.rebalancing_fees_since_last_transaction -= swap_in_fees        # Assumes immediate cancelation of swap-in operation and immediate refund
                 self.rebalancing_history_results.append("FAILED")
                 self.rebalancing_history_end_times.append(self.env.now)
-            else:
+            else:   # success
                 self.local_balances[neighbor] += swap_amount
                 self.remote_balances[neighbor] -= swap_amount
 
@@ -232,7 +244,8 @@ class Node:
         self.rebalancing_locks[neighbor].release(rebalance_request)
 
     def swap_out(self, neighbor, swap_amount, rebalance_request):
-        swap_out_fees = swap_amount * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
+        # swap_out_amount is the net amount that is moving IN THE CHANNEL: it DOES include the fees
+        swap_out_fees = self.calculate_swap_out_fees(swap_amount)
 
         self.rebalancing_history_start_times.append(self.env.now)
         self.rebalancing_history_types.append(neighbor + "-OUT")
@@ -250,14 +263,16 @@ class Node:
                 print("Time {:.2f}: SWAP-OUT aborted due to insufficient balance in channel N-{}.".format(self.env.now, neighbor))
             self.rebalancing_history_results.append("ABORTED")
             self.rebalancing_history_end_times.append(self.env.now)
-        else:
+        else:   # success
             self.local_balances[neighbor] -= swap_amount
-            self.swap_OUT_amounts_in_progress[neighbor] += (swap_amount - swap_out_fees)
+            # self.swap_OUT_amounts_in_progress[neighbor] += (swap_amount - swap_out_fees)
+            self.swap_OUT_amounts_in_progress[neighbor] += swap_amount
             self.rebalancing_fees_since_last_transaction += swap_out_fees
             yield self.env.timeout(self.rebalancing_parameters["T_conf"])
             self.on_chain_budget += (swap_amount - swap_out_fees)
             self.remote_balances[neighbor] += swap_amount
-            self.swap_OUT_amounts_in_progress[neighbor] -= (swap_amount - swap_out_fees)
+            # self.swap_OUT_amounts_in_progress[neighbor] -= (swap_amount - swap_out_fees)
+            self.swap_OUT_amounts_in_progress[neighbor] -= swap_amount
 
             self.rebalancing_history_results.append("SUCCEEDED")
             self.rebalancing_history_end_times.append(self.env.now)
