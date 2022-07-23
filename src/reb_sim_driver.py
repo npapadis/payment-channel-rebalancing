@@ -171,9 +171,9 @@ def main():
     lower_threshold = 0.3
     upper_threshold = 0.7
     # default_swap_amount = server_min_swap_amount
-    check_interval = 5     # minutes
+    check_interval = 10     # minutes
 
-    T_conf = 10     # minutes
+    T_conf = 9.99     # minutes
     miner_fee = 2
 
     safety_margin_in_minutes_L = T_conf/5
