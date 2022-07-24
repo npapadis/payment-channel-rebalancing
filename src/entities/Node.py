@@ -355,7 +355,7 @@ class Node:
                         exit(1)
                     elif r_R == 0:
                         if self.verbose:
-                            print("Time {:.2f}: SWAP not needed in channel N-R.". format(self.env.now))
+                            print("Time {:.2f}: No SWAP performed in channel N-R.". format(self.env.now))
                         yield self.env.process(self.swap_in(
                             neighbor="L",
                             # swap_amount=r_L,
@@ -377,7 +377,7 @@ class Node:
 
                 elif r_L == 0.0:
                     if self.verbose:
-                        print("Time {:.2f}: SWAP not needed in channel N-L.".format(self.env.now))
+                        print("Time {:.2f}: No SWAP performed in channel N-L.".format(self.env.now))
                     if r_R > 0.0:
                         yield self.env.process(self.swap_in(
                             neighbor="R",
@@ -388,7 +388,7 @@ class Node:
                     elif r_R == 0:
                         pass
                         if self.verbose:
-                            print("Time {:.2f}: SWAP not needed in channel N-R.".format(self.env.now))
+                            print("Time {:.2f}: No SWAP performed in channel N-R.".format(self.env.now))
                     else:   # if r_R < 0.0
                         yield self.env.process(self.swap_out(
                             neighbor="R",
@@ -411,7 +411,7 @@ class Node:
                         )
                     elif r_R == 0:
                         if self.verbose:
-                            print("Time {:.2f}: SWAP not needed in channel N-R.".format(self.env.now))
+                            print("Time {:.2f}: No SWAP performed in channel N-R.".format(self.env.now))
                         yield self.env.process(self.swap_out(
                             neighbor="L",
                             # swap_amount=-r_L,
