@@ -61,13 +61,13 @@ for rebalancing_policy_index, rebalancing_policy in enumerate(par_rebalancing_po
     result_times_to_plot[rebalancing_policy] = result_times[rebalancing_policy_index][::step_size]
     if len(result_times[rebalancing_policy_index]) % step_size != 0:
         result_times_to_plot[rebalancing_policy].append(result_times[rebalancing_policy_index][-1])
-    cumulative_fee_losses_over_time_values_to_plot[rebalancing_policy] = cumulative_fee_losses_over_time_values[rebalancing_policy_index][::step_size]
+    cumulative_fee_losses_over_time_values_to_plot[rebalancing_policy] = list(cumulative_fee_losses_over_time_values[rebalancing_policy_index][::step_size])
     if len(cumulative_fee_losses_over_time_values[rebalancing_policy_index]) % step_size != 0:
         cumulative_fee_losses_over_time_values_to_plot[rebalancing_policy].append(cumulative_fee_losses_over_time_values[rebalancing_policy_index][-1])
-    cumulative_rebalancing_fees_over_time_values_to_plot[rebalancing_policy] = cumulative_rebalancing_fees_over_time_values[rebalancing_policy_index][::step_size]
+    cumulative_rebalancing_fees_over_time_values_to_plot[rebalancing_policy] = list(cumulative_rebalancing_fees_over_time_values[rebalancing_policy_index][::step_size])
     if len(cumulative_rebalancing_fees_over_time_values[rebalancing_policy_index]) % step_size != 0:
         cumulative_rebalancing_fees_over_time_values_to_plot[rebalancing_policy].append(cumulative_rebalancing_fees_over_time_values[rebalancing_policy_index][-1])
-    cumulative_total_cost_values_to_plot[rebalancing_policy] = cumulative_total_cost_values[rebalancing_policy_index][::step_size]
+    cumulative_total_cost_values_to_plot[rebalancing_policy] = list(cumulative_total_cost_values[rebalancing_policy_index][::step_size])
     if len(cumulative_total_cost_values[rebalancing_policy_index]) % step_size != 0:
         cumulative_total_cost_values_to_plot[rebalancing_policy].append(cumulative_total_cost_values[rebalancing_policy_index][-1])
 
