@@ -18,6 +18,8 @@ class Node:
         self.capacities = {"L": node_parameters["capacity_L"], "R": node_parameters["capacity_R"]}
         self.fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
         self.on_chain_budget = node_parameters["on_chain_budget"]
+        self.target_max_on_chain_amount = self.on_chain_budget * 10
+
         self.swap_IN_amounts_in_progress = {"L": 0.0, "R": 0.0}
         self.swap_OUT_amounts_in_progress = {"L": 0.0, "R": 0.0}
         self.rebalancing_parameters = rebalancing_parameters
@@ -30,7 +32,6 @@ class Node:
         if self.rebalancing_parameters["rebalancing_policy"] == "SAC":
             self.learning_parameters = LearningParameters()
             torch.manual_seed(self.learning_parameters.seed)
-            self.target_max_on_chain_amount = self.on_chain_budget * 10
             # self.observation_space = spaces.Box(
             #         low=np.zeros(5),
             #         high=np.array(
@@ -238,6 +239,7 @@ class Node:
                         state=state,
                         min_swap_out_amount=self.min_swap_out_amount,
                         capacities=self.capacities,
+                        target_max_on_chain_amount=self.target_max_on_chain_amount,
                     )
 
                 # expanded_action = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)

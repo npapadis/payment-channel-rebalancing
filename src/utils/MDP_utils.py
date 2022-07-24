@@ -4,10 +4,15 @@ import sys
 
 
 # def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount):
-def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount, capacities):
+def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount, capacities, target_max_on_chain_amount):
     """
-    Input: raw_action = (r_L, r_R), possibly off-constraint bounds
-    Output: processed_action = (r_L, r_R), inside constraint bounds or zero
+    Input:
+        raw_action = (r_L, r_R), possibly off-constraint bounds, normalized
+        state: normalized
+        min_swap_out_amount: absolute
+        capacities: absolute
+        target_max_on_chain_amount: absolute
+    Output: processed_action = (r_L, r_R), inside constraint bounds or zero, normalized
     """
 
     r_L = raw_action[0]
@@ -18,7 +23,8 @@ def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount
         state=state,
         min_swap_out_amount=min_swap_out_amount,
         # estimates_of_future_remote_balances=
-        capacities=capacities
+        capacities=capacities,
+        target_max_on_chain_amount=target_max_on_chain_amount,
     ):
         processed_r_L = 0.0
     else:
@@ -30,7 +36,8 @@ def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount
         state=state,
         min_swap_out_amount=min_swap_out_amount,
         # estimates_of_future_remote_balances=
-        capacities=capacities
+        capacities=capacities,
+        target_max_on_chain_amount=target_max_on_chain_amount,
     ):
         processed_r_R = 0.0
     else:
@@ -40,22 +47,29 @@ def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount
 
 
 # def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, estimates_of_future_remote_balances):
-def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, capacities):
-    local_balance = None
+def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, capacities, target_max_on_chain_amount):
+    # local_balance = None
+    local_balance_absolute = None
     if neighbor == "L":
-        local_balance = state[1]
+        # local_balance = state[1]
+        local_balance_absolute = state[1] * capacities[neighbor]
         # estimate_of_future_remote_balance = estimates_of_future_remote_balances[0]
     elif neighbor == "R":
-        local_balance = state[2]
+        # local_balance = state[2]
+        local_balance_absolute = state[2] * capacities[neighbor]
         # estimate_of_future_remote_balance = estimates_of_future_remote_balances[1]
     else:
         print("Error: invalid arguments in rebalancing_amount_respects_constraints.")
         exit(1)
 
-    on_chain_balance = state[4]
+    r_amount_absolute = r_amount * capacities[neighbor]
+
+    # on_chain_balance = state[4]
+    on_chain_balance_absolute = state[4] * target_max_on_chain_amount
 
     # if (- local_balance <= r_amount <= - min_swap_out_amount) or (0 <= r_amount <= min(on_chain_balance, estimate_of_future_remote_balance)):
-    if (- local_balance <= r_amount <= - min_swap_out_amount) or (0.0 <= r_amount <= min(on_chain_balance, capacities[neighbor])):
+    # if (- local_balance <= r_amount <= - min_swap_out_amount) or (0.0 <= r_amount <= min(on_chain_balance_absolute, capacities[neighbor])):
+    if (- local_balance_absolute <= r_amount_absolute <= - min_swap_out_amount) or (0.0 <= r_amount_absolute <= min(on_chain_balance_absolute, capacities[neighbor])):
         constraints_are_respected = True
     else:
         constraints_are_respected = False
@@ -103,7 +117,7 @@ class LearningParameters:   # args in original code's main.py
         self.gamma = 0.99                           # Discount factor for reward
         self.tau = 0.005                            # Target smoothing coefficient (τ)
         self.lr = 0.0003                            # Learning rate
-        self.alpha = 0.2                            # Temperature parameter α determines the relative importance of the entropy term against the reward
+        self.alpha = 0.02                            # Temperature parameter α determines the relative importance of the entropy term against the reward
         self.automatic_entropy_tuning = False       # Automatically adjust α
         self.seed = 123456                          # Random seed
         self.batch_size = 1                         # Batch size
