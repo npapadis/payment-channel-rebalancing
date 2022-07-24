@@ -30,16 +30,30 @@ class Node:
         if self.rebalancing_parameters["rebalancing_policy"] == "SAC":
             self.learning_parameters = LearningParameters()
             torch.manual_seed(self.learning_parameters.seed)
+            self.target_max_on_chain_amount = self.on_chain_budget * 10
+            # self.observation_space = spaces.Box(
+            #         low=np.zeros(5),
+            #         high=np.array(
+            #             [self.capacities["L"], self.capacities["L"], self.capacities["R"], self.capacities["R"], np.Inf]),
+            #         shape=(5,),
+            #         dtype=float
+            #     )
             self.observation_space = spaces.Box(
                     low=np.zeros(5),
-                    high=np.array(
-                        [self.capacities["L"], self.capacities["L"], self.capacities["R"], self.capacities["R"], np.Inf]),
+                    high=np.ones(5),
                     shape=(5,),
                     dtype=float
                 )
+            # self.action_space = spaces.Box(
+            #     low=np.array([- self.capacities["L"], - self.capacities["R"]]),
+            #     high=np.array([self.capacities["L"], self.capacities["R"]]),
+            #     shape=(2,),
+            #     dtype=float,
+            #     seed=self.learning_parameters.seed
+            # )
             self.action_space = spaces.Box(
-                low=np.array([- self.capacities["L"], - self.capacities["R"]]),
-                high=np.array([self.capacities["L"], self.capacities["R"]]),
+                low=np.array([-1.0, -1.0]),
+                high=np.array([1.0, 1.0]),
                 shape=(2,),
                 dtype=float,
                 seed=self.learning_parameters.seed
@@ -191,16 +205,23 @@ class Node:
                         self.update_count += 1
 
                 # Perform environment step
+                # state = [
+                #     self.remote_balances["L"],
+                #     self.local_balances["L"],
+                #     self.local_balances["R"],
+                #     self.remote_balances["R"],
+                #     self.on_chain_budget,
+                #     # self.swap_IN_amounts_in_progress["L"],
+                #     # self.swap_OUT_amounts_in_progress["L"],
+                #     # self.swap_IN_amounts_in_progress["R"],
+                #     # self.swap_OUT_amounts_in_progress["R"]
+                # ]
                 state = [
-                    self.remote_balances["L"],
-                    self.local_balances["L"],
-                    self.local_balances["R"],
-                    self.remote_balances["R"],
-                    self.on_chain_budget,
-                    # self.swap_IN_amounts_in_progress["L"],
-                    # self.swap_OUT_amounts_in_progress["L"],
-                    # self.swap_IN_amounts_in_progress["R"],
-                    # self.swap_OUT_amounts_in_progress["R"]
+                    self.remote_balances["L"] / self.capacities["L"],
+                    self.local_balances["L"] / self.capacities["L"],
+                    self.local_balances["R"] / self.capacities["R"],
+                    self.remote_balances["R"] / self.capacities["R"],
+                    self.on_chain_budget / self.target_max_on_chain_amount,
                 ]
 
                 constraint_is_respected = False
@@ -337,17 +358,20 @@ class Node:
                             print("Time {:.2f}: SWAP not needed in channel N-R.". format(self.env.now))
                         yield self.env.process(self.swap_in(
                             neighbor="L",
-                            swap_amount=r_L,
+                            # swap_amount=r_L,
+                            swap_amount=r_L * self.capacities["L"],
                             rebalance_request=rebalance_request_L)
                         )
                     else:   # if r_R < 0.0
                         yield self.env.process(self.swap_in(
                             neighbor="L",
-                            swap_amount=r_L,
+                            # swap_amount=r_L,
+                            swap_amount=r_L * self.capacities["L"],
                             rebalance_request=rebalance_request_L)
                         ) & self.env.process(self.swap_out(
                             neighbor="R",
-                            swap_amount=-r_R,
+                            # swap_amount=-r_R,
+                            swap_amount=-r_R * self.capacities["R"],
                             rebalance_request=rebalance_request_R)
                         )
 
@@ -357,7 +381,8 @@ class Node:
                     if r_R > 0.0:
                         yield self.env.process(self.swap_in(
                             neighbor="R",
-                            swap_amount=r_R,
+                            # swap_amount=r_R,
+                            swap_amount=r_R * self.capacities["R"],
                             rebalance_request=rebalance_request_R)
                         )
                     elif r_R == 0:
@@ -367,18 +392,21 @@ class Node:
                     else:   # if r_R < 0.0
                         yield self.env.process(self.swap_out(
                             neighbor="R",
-                            swap_amount=-r_R,
+                            # swap_amount=-r_R,
+                            swap_amount=-r_R * self.capacities["R"],
                             rebalance_request=rebalance_request_R)
                         )
                 else:   # if r_L < 0.0
                     if r_R > 0.0:
                         yield self.env.process(self.swap_out(
                             neighbor="L",
-                            swap_amount=-r_L,
+                            # swap_amount=-r_L,
+                            swap_amount=-r_L * self.capacities["L"],
                             rebalance_request=rebalance_request_L)
                         ) & self.env.process(self.swap_in(
                             neighbor="R",
-                            swap_amount=r_R,
+                            # swap_amount=r_R,
+                            swap_amount=r_R * self.capacities["R"],
                             rebalance_request=rebalance_request_R)
                         )
                     elif r_R == 0:
@@ -386,26 +414,36 @@ class Node:
                             print("Time {:.2f}: SWAP not needed in channel N-R.".format(self.env.now))
                         yield self.env.process(self.swap_out(
                             neighbor="L",
-                            swap_amount=-r_L,
+                            # swap_amount=-r_L,
+                            swap_amount=-r_L * self.capacities["L"],
                             rebalance_request=rebalance_request_L)
                         )
                     else:  # if r_R < 0.0
                         yield self.env.process(self.swap_out(
                             neighbor="L",
-                            swap_amount=-r_L,
+                            # swap_amount=-r_L,
+                            swap_amount=-r_L * self.capacities["L"],
                             rebalance_request=rebalance_request_L)
                         ) & self.env.process(self.swap_out(
                             neighbor="R",
-                            swap_amount=-r_R,
+                            # swap_amount=-r_R,
+                            swap_amount=-r_R * self.capacities["R"],
                             rebalance_request=rebalance_request_R)
                         )
 
+                # next_state = [
+                #     self.remote_balances["L"],
+                #     self.local_balances["L"],
+                #     self.local_balances["R"],
+                #     self.remote_balances["R"],
+                #     self.on_chain_budget,
+                # ]
                 next_state = [
-                    self.remote_balances["L"],
-                    self.local_balances["L"],
-                    self.local_balances["R"],
-                    self.remote_balances["R"],
-                    self.on_chain_budget,
+                    self.remote_balances["L"] / self.capacities["L"],
+                    self.local_balances["L"] / self.capacities["L"],
+                    self.local_balances["R"] / self.capacities["R"],
+                    self.remote_balances["R"] / self.capacities["R"],
+                    self.on_chain_budget / self.target_max_on_chain_amount,
                 ]
 
                 # reward = - ( self.fee_losses_since_last_check_time
@@ -628,3 +666,12 @@ class Node:
             self.env.process(self.perform_rebalancing_if_needed())
                 # yield self.env.process(self.perform_rebalancing_if_needed(neighbor))
             # yield self.env.process(self.perform_rebalancing_if_needed("L"))
+
+            if self.on_chain_budget >= self.target_max_on_chain_amount:
+                if self.verbose:
+                    print("Time {:.2f}: Maximum on-chain amount reached. Simulation is stopped.")
+                    print("Time {:.2f}: Final balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(
+                            self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"],
+                            self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"],
+                            self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
+                break
