@@ -46,6 +46,7 @@ def pypet_wrapper(traj):
         "amount_distribution_R_to_L": traj.amount_distribution_R_to_L,
         "amount_distribution_parameters_R_to_L": traj.amount_distribution_parameters_R_to_L,
         "verbose": traj.verbose,
+        "verbose_also_print_transactions": traj.verbose_also_print_transactions,
         "seed": traj.seed
     }
 
@@ -126,8 +127,9 @@ def main():
 
     # SIMULATION PARAMETERS
 
-    # verbose = True
-    verbose = False
+    verbose = True
+    # verbose = False
+    verbose_also_print_transactions = False
     num_of_experiments = 1
 
     base_fee = 0    # 4e-4
@@ -211,7 +213,9 @@ def main():
     traj.f_add_parameter('safety_margin_in_minutes_L', safety_margin_in_minutes_L, comment='Safety margin in minutes for swaps under the loopmax policy for node L')
     traj.f_add_parameter('safety_margin_in_minutes_R', safety_margin_in_minutes_R, comment='Safety margin in minutes for swaps under the loopmax policy for node R')
 
-    traj.f_add_parameter('verbose', verbose, comment='Verbose output')
+    # traj.f_add_parameter('verbose', verbose, comment='Verbose output')
+    traj.f_add_parameter('verbose', verbose, comment='Verbose output at rebalancing check times')
+    traj.f_add_parameter('verbose_also_print_transactions', verbose_also_print_transactions, comment='Verbose output for all transactions apart from rebalancing check times')
     traj.f_add_parameter('num_of_experiments', num_of_experiments, comment='Repetitions of every experiment')
     traj.f_add_parameter('seed', 0, comment='Randomness seed')
 

@@ -11,7 +11,8 @@ from src.utils.MDP_utils import process_action_to_respect_constraints, expand_ac
 
 class Node:
     # def __init__(self, env, node_parameters, rebalancing_parameters, demand_estimates, verbose):
-    def __init__(self, env, node_parameters, rebalancing_parameters, verbose):
+    # def __init__(self, env, node_parameters, rebalancing_parameters, verbose):
+    def __init__(self, env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions):
         self.env = env
         self.local_balances = {"L": node_parameters["initial_balance_L"], "R": node_parameters["initial_balance_R"]}
         self.remote_balances = {"L": node_parameters["capacity_L"] - node_parameters["initial_balance_L"], "R": node_parameters["capacity_R"] - node_parameters["initial_balance_R"]}
@@ -24,6 +25,7 @@ class Node:
         self.swap_OUT_amounts_in_progress = {"L": 0.0, "R": 0.0}
         self.rebalancing_parameters = rebalancing_parameters
         self.verbose = verbose
+        self.verbose_also_print_transactions = verbose_also_print_transactions
         self.latest_transactions_buffer_size = 20
         self.latest_transactions_times = {"L": [], "R": []}
         self.latest_transactions_amounts = {"L": [], "R": []}
@@ -133,13 +135,13 @@ class Node:
         self.balance_history_values["R"].append(self.local_balances["R"])
         t.status = "SUCCEEDED"
 
-        if self.verbose:
+        if self.verbose and self.verbose_also_print_transactions:
             print("Time {:.2f}: SUCCESS: Transaction {} processed.".format(self.env.now, t))
             print("Time {:.2f}: New balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
 
     def reject_transaction(self, t):
         t.status = "FAILED"
-        if self.verbose:
+        if self.verbose and self.verbose_also_print_transactions:
             print("Time {:.2f}: FAILURE: Transaction {} rejected.".format(self.env.now, t))
             print("Time {:.2f}: New balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
 
@@ -472,6 +474,16 @@ class Node:
 
                 mask = float(not done)
                 self.replay_memory.push(state, processed_action, reward, next_state, mask)  # Append transition to memory
+
+                if self.verbose:
+                    print_precision = "%.5f"
+                    state_printable = [print_precision % elem for elem in state]
+                    processed_action_printable = [print_precision % elem for elem in processed_action]
+                    next_state_printable = [print_precision % elem for elem in next_state]
+                    print("Time {:.2f}: Tuple pushed to memory:\n\tstate = {}\n\taction = {}\n\treward = {:.5f}\n\tnext state = {}".format(
+                            self.env.now, state_printable, processed_action_printable, reward, next_state_printable
+                        )
+                    )
         else:
             print("{} is not a valid rebalancing policy.".format(self.rebalancing_parameters["rebalancing_policy"]))
             exit(1)
@@ -671,7 +683,7 @@ class Node:
 
             if self.on_chain_budget >= self.target_max_on_chain_amount:
                 if self.verbose:
-                    print("Time {:.2f}: Maximum on-chain amount reached. Simulation is stopped.")
+                    print("Time {:.2f}: Maximum on-chain amount reached. Simulation is stopped.".format(self.env.now))
                     print("Time {:.2f}: Final balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(
                             self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"],
                             self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"],

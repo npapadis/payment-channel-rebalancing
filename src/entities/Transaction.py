@@ -3,7 +3,8 @@ import sys
 
 class Transaction:
     # def __init__(self, env, time_of_arrival, path, previous_node, current_node, next_node, amount, verbose):
-    def __init__(self, env, topology, time_of_arrival, source, destination, amount, verbose):
+    # def __init__(self, env, topology, time_of_arrival, source, destination, amount, verbose):
+    def __init__(self, env, topology, time_of_arrival, source, destination, amount, verbose, verbose_also_print_transactions):
         self.env = env
         self.time_of_arrival = time_of_arrival
         self.source = source
@@ -14,11 +15,12 @@ class Transaction:
         # self.next_node = next_node          # String
         self.amount = amount
         self.verbose = verbose
+        self.verbose_also_print_transactions = verbose_also_print_transactions
         self.status = "PENDING"
         self.pathfinder(topology)
         self.cleared = self.env.event()
 
-        if self.verbose:
+        if self.verbose and self.verbose_also_print_transactions:
             print("Time {:.2f}: Transaction {} generated.".format(self.env.now, self))
 
         # Start the run process every time an instance is created.

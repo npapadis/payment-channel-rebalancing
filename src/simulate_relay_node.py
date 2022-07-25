@@ -7,7 +7,8 @@ from src.entities.Node import Node
 from src.entities.Transaction import Transaction
 
 
-def transaction_generator(env, topology, source, destination, total_transactions, exp_mean, amount_distribution, amount_distribution_parameters, all_transactions_list, verbose):
+# def transaction_generator(env, topology, source, destination, total_transactions, exp_mean, amount_distribution, amount_distribution_parameters, all_transactions_list, verbose):
+def transaction_generator(env, topology, source, destination, total_transactions, exp_mean, amount_distribution, amount_distribution_parameters, all_transactions_list, verbose, verbose_also_print_transactions):
     time_to_next_arrival = random.exponential(1.0 / exp_mean)
     yield env.timeout(time_to_next_arrival)
 
@@ -39,7 +40,8 @@ def transaction_generator(env, topology, source, destination, total_transactions
             print("Input error: {} is not a supported amount distribution or the parameters {} given are invalid.".format(amount_distribution, amount_distribution_parameters))
             sys.exit(1)
 
-        t = Transaction(env, topology, env.now, source, destination, amount, verbose)
+        # t = Transaction(env, topology, env.now, source, destination, amount, verbose)
+        t = Transaction(env, topology, env.now, source, destination, amount, verbose, verbose_also_print_transactions)
         all_transactions_list.append(t)
         env.process(t.run())
 
@@ -87,6 +89,7 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     #     sys.exit(1)
 
     verbose = experiment_parameters["verbose"]
+    verbose_also_print_transactions = experiment_parameters["verbose_also_print_transactions"]
     seed = experiment_parameters["seed"]
 
     # if amount_distribution_L_to_R == "empirical_from_csv_file":
@@ -101,14 +104,17 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     env = simpy.Environment()
 
     # N = Node(env, node_parameters, rebalancing_parameters, demand_estimates, verbose)
-    N = Node(env, node_parameters, rebalancing_parameters, verbose)
+    # N = Node(env, node_parameters, rebalancing_parameters, verbose)
+    N = Node(env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions)
     env.process(N.run())
 
     topology = {"N": N}
 
     all_transactions_list = []
-    env.process(transaction_generator(env, topology, "L", "R", total_transactions_L_to_R, exp_mean_L_to_R, amount_distribution_L_to_R, amount_distribution_parameters_L_to_R, all_transactions_list, verbose))
-    env.process(transaction_generator(env, topology, "R", "L", total_transactions_R_to_L, exp_mean_R_to_L, amount_distribution_R_to_L, amount_distribution_parameters_R_to_L, all_transactions_list, verbose))
+    # env.process(transaction_generator(env, topology, "L", "R", total_transactions_L_to_R, exp_mean_L_to_R, amount_distribution_L_to_R, amount_distribution_parameters_L_to_R, all_transactions_list, verbose))
+    env.process(transaction_generator(env, topology, "L", "R", total_transactions_L_to_R, exp_mean_L_to_R, amount_distribution_L_to_R, amount_distribution_parameters_L_to_R, all_transactions_list, verbose, verbose_also_print_transactions))
+    # env.process(transaction_generator(env, topology, "R", "L", total_transactions_R_to_L, exp_mean_R_to_L, amount_distribution_R_to_L, amount_distribution_parameters_R_to_L, all_transactions_list, verbose))
+    env.process(transaction_generator(env, topology, "R", "L", total_transactions_R_to_L, exp_mean_R_to_L, amount_distribution_R_to_L, amount_distribution_parameters_R_to_L, all_transactions_list, verbose, verbose_also_print_transactions))
 
     # env.run(until=total_simulation_time_estimation + rebalancing_parameters["check_interval"])
     env.run(until=total_simulation_time_estimation)
