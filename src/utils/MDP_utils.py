@@ -4,7 +4,7 @@ import sys
 
 
 # def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount):
-def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount, capacities, target_max_on_chain_amount):
+def process_action_to_respect_constraints(raw_action, state, N):
     """
     Input:
         raw_action = (r_L, r_R), possibly off-constraint bounds, normalized
@@ -21,10 +21,7 @@ def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount
         r_amount=r_L,
         neighbor="L",
         state=state,
-        min_swap_out_amount=min_swap_out_amount,
-        # estimates_of_future_remote_balances=
-        capacities=capacities,
-        target_max_on_chain_amount=target_max_on_chain_amount,
+        N=N,
     ):
         processed_r_L = 0.0
     else:
@@ -34,42 +31,74 @@ def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount
         r_amount=r_R,
         neighbor="R",
         state=state,
-        min_swap_out_amount=min_swap_out_amount,
-        # estimates_of_future_remote_balances=
-        capacities=capacities,
-        target_max_on_chain_amount=target_max_on_chain_amount,
+        N=N,
     ):
         processed_r_R = 0.0
     else:
         processed_r_R = r_R
 
+    on_chain_balance_absolute = state[4] * N.target_max_on_chain_amount
+    if not rebalancing_amounts_respect_coupled_constraint(
+            r_L=processed_r_L,
+            r_R=processed_r_R,
+            on_chain_balance_absolute=on_chain_balance_absolute,
+            N=N):
+        if (processed_r_L > 0.0) and (processed_r_R > 0.0):
+            r_L_in_alone_respects_on_chain_constraint = rebalancing_amounts_respect_coupled_constraint(r_L=processed_r_L, r_R=0, on_chain_balance_absolute=on_chain_balance_absolute, N=N)
+            r_R_in_alone_respects_on_chain_constraint = rebalancing_amounts_respect_coupled_constraint(r_L=0, r_R=processed_r_R, on_chain_balance_absolute=on_chain_balance_absolute, N=N)
+            if processed_r_L > processed_r_R:
+                if r_L_in_alone_respects_on_chain_constraint:
+                    processed_r_R = 0.0
+                elif r_R_in_alone_respects_on_chain_constraint:
+                    processed_r_L = 0.0
+                else:
+                    processed_r_L = 0.0
+                    processed_r_R = 0.0
+            else:   # if processed_r_L <= processed_r_R
+                if r_R_in_alone_respects_on_chain_constraint:
+                    processed_r_L = 0.0
+                elif r_L_in_alone_respects_on_chain_constraint:
+                    processed_r_R = 0.0
+                else:
+                    processed_r_L = 0.0
+                    processed_r_R = 0.0
+
+        elif (processed_r_L > 0.0) and (processed_r_R == 0.0):
+            processed_r_L = 0.0
+        elif (processed_r_L == 0.0) and (processed_r_R > 0.0):
+            processed_r_R = 0.0
+        else:
+            pass
+
     return [processed_r_L, processed_r_R]
 
 
 # def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, estimates_of_future_remote_balances):
-def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, capacities, target_max_on_chain_amount):
+# def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, capacities, target_max_on_chain_amount):
+def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, N):
     # local_balance = None
     local_balance_absolute = None
     if neighbor == "L":
         # local_balance = state[1]
-        local_balance_absolute = state[1] * capacities[neighbor]
+        local_balance_absolute = state[1] * N.capacities[neighbor]
         # estimate_of_future_remote_balance = estimates_of_future_remote_balances[0]
     elif neighbor == "R":
         # local_balance = state[2]
-        local_balance_absolute = state[2] * capacities[neighbor]
+        local_balance_absolute = state[2] * N.capacities[neighbor]
         # estimate_of_future_remote_balance = estimates_of_future_remote_balances[1]
     else:
         print("Error: invalid arguments in rebalancing_amount_respects_constraints.")
         exit(1)
 
-    r_amount_absolute = r_amount * capacities[neighbor]
+    r_amount_absolute = r_amount * N.capacities[neighbor]
 
     # on_chain_balance = state[4]
-    on_chain_balance_absolute = state[4] * target_max_on_chain_amount
+    on_chain_balance_bound_absolute = state[4] * N.target_max_on_chain_amount - N.calculate_swap_in_fees(r_amount)
 
     # if (- local_balance <= r_amount <= - min_swap_out_amount) or (0 <= r_amount <= min(on_chain_balance, estimate_of_future_remote_balance)):
     # if (- local_balance <= r_amount <= - min_swap_out_amount) or (0.0 <= r_amount <= min(on_chain_balance_absolute, capacities[neighbor])):
-    if (- local_balance_absolute <= r_amount_absolute <= - min_swap_out_amount) or (0.0 <= r_amount_absolute <= min(on_chain_balance_absolute, capacities[neighbor])):
+    # if (- local_balance_absolute <= r_amount_absolute <= - N.min_swap_out_amount) or (0.0 <= r_amount_absolute <= min(on_chain_balance_bound_absolute, N.capacities[neighbor])):
+    if (- local_balance_absolute <= r_amount_absolute <= - N.min_swap_out_amount) or (0.0 <= r_amount_absolute <= N.capacities[neighbor]):
         constraints_are_respected = True
     else:
         constraints_are_respected = False
@@ -77,7 +106,21 @@ def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state,
     return constraints_are_respected
 
 
-def rebalancing_amounts_respect_joint_constraint(processed_action):
+def rebalancing_amounts_respect_coupled_constraint(r_L, r_R, on_chain_balance_absolute, N):
+
+    if (r_L > 0) and (r_R > 0):
+        constraint_is_respected = True if (r_L + N.calculate_swap_in_fees(r_L) + r_R + N.calculate_swap_in_fees(r_R) <= on_chain_balance_absolute) else False
+    elif (r_L > 0) and (r_R == 0):
+        constraint_is_respected = True if (r_L + N.calculate_swap_in_fees(r_L) <= on_chain_balance_absolute) else False
+    elif (r_L == 0) and (r_R > 0):
+        constraint_is_respected = True if (r_R + N.calculate_swap_in_fees(r_R) <= on_chain_balance_absolute) else False
+    else:
+        constraint_is_respected = True
+
+    return constraint_is_respected
+
+
+def rebalancing_amounts_not_both_positive(processed_action):
 
     [processed_r_L, processed_r_R] = processed_action
     if (processed_r_L > 0.0) and (processed_r_R > 0.0):

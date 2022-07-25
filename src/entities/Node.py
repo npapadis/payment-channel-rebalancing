@@ -6,7 +6,7 @@ from gym import spaces
 from src.learning.pytorch_soft_actor_critic.replay_memory import ReplayMemory
 from src.learning.pytorch_soft_actor_critic.sac import SAC
 from src.utils.MDP_utils import process_action_to_respect_constraints, expand_action, \
-    rebalancing_amounts_respect_joint_constraint, LearningParameters
+    rebalancing_amounts_not_both_positive, LearningParameters
 
 
 class Node:
@@ -20,6 +20,7 @@ class Node:
         self.fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
         self.on_chain_budget = node_parameters["on_chain_budget"]
         self.target_max_on_chain_amount = self.on_chain_budget * 10
+        # self.target_max_on_chain_amount = 100 * max(self.capacities["L"], self.capacities["R"])
 
         self.swap_IN_amounts_in_progress = {"L": 0.0, "R": 0.0}
         self.swap_OUT_amounts_in_progress = {"L": 0.0, "R": 0.0}
@@ -227,21 +228,23 @@ class Node:
                     self.on_chain_budget / self.target_max_on_chain_amount,
                 ]
 
-                constraint_is_respected = False
-                while not constraint_is_respected:  # ensure raw_action does not contain swap-ins for both channels
-                    # raw_action = self.agent.select_action(state)  # raw_action = (r_L, r_R), possibly off-constraint bounds
-                    if self.check_time_index < self.learning_parameters.start_steps:
-                        raw_action = self.action_space.sample()  # Sample random action
-                    else:
-                        raw_action = self.agent.select_action(state)  # Sample action from policy
-                    constraint_is_respected = rebalancing_amounts_respect_joint_constraint(raw_action)
+                # constraint_is_respected = False
+                # while not constraint_is_respected:  # ensure raw_action does not contain swap-ins for both channels
+                #     # raw_action = self.agent.select_action(state)  # raw_action = (r_L, r_R), possibly off-constraint bounds
+                #     if self.check_time_index < self.learning_parameters.start_steps:
+                #         raw_action = self.action_space.sample()  # Sample random action
+                #     else:
+                #         raw_action = self.agent.select_action(state)  # Sample action from policy
+                #     constraint_is_respected = rebalancing_amounts_not_both_positive(raw_action)
+                if self.check_time_index < self.learning_parameters.start_steps:
+                    raw_action = self.action_space.sample()  # Sample random action
+                else:
+                    raw_action = self.agent.select_action(state)  # Sample action from policy
 
                 processed_action = process_action_to_respect_constraints(   # processed_action = (r_L, r_R), inside constraint bounds or zero
                         raw_action=raw_action,
                         state=state,
-                        min_swap_out_amount=self.min_swap_out_amount,
-                        capacities=self.capacities,
-                        target_max_on_chain_amount=self.target_max_on_chain_amount,
+                        N=self,
                     )
 
                 # expanded_action = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)
@@ -355,17 +358,26 @@ class Node:
                 # execute non-zero swaps
                 if r_L > 0.0:
                     if r_R > 0.0:
-                        print("Unreachable point reached: swap-ins in both channels is not a valid swap combination.")
-                        exit(1)
+                        # print("Unreachable point reached: swap-ins in both channels is not a valid swap combination.")
+                        # exit(1)
+                        yield self.env.process(self.swap_in(
+                            neighbor="L",
+                            swap_amount=r_L * self.capacities["L"],
+                            rebalance_request=rebalance_request_L)
+                        ) & self.env.process(self.swap_in(
+                            neighbor="R",
+                            swap_amount=r_R * self.capacities["R"],
+                            rebalance_request=rebalance_request_R)
+                        )
                     elif r_R == 0:
-                        if self.verbose:
-                            print("Time {:.2f}: No SWAP performed in channel N-R.". format(self.env.now))
                         yield self.env.process(self.swap_in(
                             neighbor="L",
                             # swap_amount=r_L,
                             swap_amount=r_L * self.capacities["L"],
                             rebalance_request=rebalance_request_L)
                         )
+                        if self.verbose:
+                            print("Time {:.2f}: No SWAP performed in channel N-R.". format(self.env.now))
                     else:   # if r_R < 0.0
                         yield self.env.process(self.swap_in(
                             neighbor="L",
@@ -393,6 +405,7 @@ class Node:
                         pass
                         if self.verbose:
                             print("Time {:.2f}: No SWAP performed in channel N-R.".format(self.env.now))
+                        yield self.env.timeout(self.rebalancing_parameters["T_conf"])   # wait for T_conf so that the correct reward is accumulated from dropped transactions
                     else:   # if r_R < 0.0
                         yield self.env.process(self.swap_out(
                             neighbor="R",
@@ -414,14 +427,14 @@ class Node:
                             rebalance_request=rebalance_request_R)
                         )
                     elif r_R == 0:
-                        if self.verbose:
-                            print("Time {:.2f}: No SWAP performed in channel N-R.".format(self.env.now))
                         yield self.env.process(self.swap_out(
                             neighbor="L",
                             # swap_amount=-r_L,
                             swap_amount=-r_L * self.capacities["L"],
                             rebalance_request=rebalance_request_L)
                         )
+                        if self.verbose:
+                            print("Time {:.2f}: No SWAP performed in channel N-R.".format(self.env.now))
                     else:  # if r_R < 0.0
                         yield self.env.process(self.swap_out(
                             neighbor="L",
@@ -461,8 +474,12 @@ class Node:
                 reward = - (self.fee_losses_since_last_check_time
                             +
                             (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 0) +
+                            # (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 10 * self.calculate_swap_in_fees(r_L_in)) +
+                            # self.calculate_swap_in_fees(r_L_in) +
                             self.calculate_swap_out_fees(r_L_out) +
                             (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 0) +
+                            # (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 10 * self.calculate_swap_in_fees(r_R_in)) +
+                            # self.calculate_swap_in_fees(r_R_in) +
                             self.calculate_swap_out_fees(r_R_out)
                             )
                 # TODO: save rewards and respective times
