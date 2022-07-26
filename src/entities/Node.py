@@ -21,7 +21,7 @@ class Node:
         self.capacities = {"L": node_parameters["capacity_L"], "R": node_parameters["capacity_R"]}
         self.fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
         self.on_chain_budget = node_parameters["on_chain_budget"]
-        self.target_max_on_chain_amount = self.on_chain_budget * 10
+        self.target_max_on_chain_amount = self.on_chain_budget * 30
         # self.target_max_on_chain_amount = 100 * max(self.capacities["L"], self.capacities["R"])
 
         self.swap_IN_amounts_in_progress = {"L": 0.0, "R": 0.0}
@@ -728,11 +728,11 @@ class Node:
                 # yield self.env.process(self.perform_rebalancing_if_needed(neighbor))
             # yield self.env.process(self.perform_rebalancing_if_needed("L"))
 
-            if self.on_chain_budget >= self.target_max_on_chain_amount:
-                if self.verbose:
-                    print("Time {:.2f}: Maximum on-chain amount reached. Simulation is stopped.".format(self.env.now))
-                    print("Time {:.2f}: Final balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(
-                            self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"],
-                            self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"],
-                            self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
-                break
+            # if self.on_chain_budget > self.target_max_on_chain_amount:
+            #     if self.verbose:
+            #         print("Time {:.2f}: Maximum on-chain amount reached. Simulation is stopped.".format(self.env.now))
+            #         print("Time {:.2f}: Final balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(
+            #                 self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"],
+            #                 self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"],
+            #                 self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
+            #     break
