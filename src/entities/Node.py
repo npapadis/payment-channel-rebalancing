@@ -490,7 +490,8 @@ class Node:
                 self.swap_in_successful_in_channel = []
 
                 mask = float(not done)
-                self.replay_memory.push(state, processed_action, reward, next_state, mask)  # Append transition to memory
+                # self.replay_memory.push(state, processed_action, reward, next_state, mask)  # Append transition to memory
+                self.replay_memory.push(state, raw_action, reward, next_state, mask)  # Append transition to memory
 
                 if self.verbose:
                     print_precision = "%.5f"
