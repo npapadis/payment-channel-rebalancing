@@ -1,7 +1,10 @@
+import datetime
+
 import numpy as np
 import simpy
 import torch
 from gym import spaces
+from torch.utils.tensorboard import SummaryWriter
 
 from src.learning.pytorch_soft_actor_critic.replay_memory import ReplayMemory
 from src.learning.pytorch_soft_actor_critic.sac import SAC
@@ -68,6 +71,9 @@ class Node:
                 seed=self.learning_parameters.seed
             )
             self.update_count = 0
+            self.writer = SummaryWriter('../runs/{}_SAC_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), "autotune" if self.learning_parameters.automatic_entropy_tuning else "")) # Tensorboard setup
+            self.min_rebalancing_percentage = 0.1
+            self.swap_failure_penalty_coefficient = 20
         else:
             self.learning_parameters = None
             self.action_space = None
@@ -205,7 +211,13 @@ class Node:
                         critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = self.agent.update_parameters(
                             memory=self.replay_memory,
                             batch_size=self.learning_parameters.batch_size,
-                            updates=self.update_count)
+                            updates=self.update_count
+                        )
+                        self.writer.add_scalar('loss/critic_1', critic_1_loss, self.update_count)
+                        self.writer.add_scalar('loss/critic_2', critic_2_loss, self.update_count)
+                        self.writer.add_scalar('loss/policy', policy_loss, self.update_count)
+                        self.writer.add_scalar('loss/entropy_loss', ent_loss, self.update_count)
+                        self.writer.add_scalar('entropy_temperature/alpha', alpha, self.update_count)
                         self.update_count += 1
 
                 # Perform environment step
