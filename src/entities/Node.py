@@ -8,8 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.learning.pytorch_soft_actor_critic.replay_memory import ReplayMemory
 from src.learning.pytorch_soft_actor_critic.sac import SAC
-from src.utils.MDP_utils import process_action_to_respect_constraints, expand_action, \
-    rebalancing_amounts_not_both_positive, LearningParameters
+from src.utils.MDP_utils import *
 
 
 class Node:
@@ -86,6 +85,7 @@ class Node:
         self.time_to_check = self.env.event()
         self.min_swap_out_amount = self.rebalancing_parameters["miner_fee"] / (1 - self.rebalancing_parameters["server_swap_fee"])
         self.swap_in_successful_in_channel = []
+        self.swap_out_successful_in_channel = []
         self.fee_losses_since_last_check_time = 0
         self.check_time_index = 0
 
@@ -258,6 +258,11 @@ class Node:
                         state=state,
                         N=self,
                     )
+                # processed_action = raw_action       # TODO: check if needed
+                # processed_action = process_action_to_be_more_than_min_rebalancing_percentage(
+                #     raw_action=raw_action,
+                #     N=self,
+                # )
 
                 # expanded_action = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)
                 # [r_L_in, r_L_out, r_R_in, r_R_out] = expanded_action
@@ -483,23 +488,32 @@ class Node:
                 #     self.calculate_swap_out_fees(r_R_out)
                 # )
                 [r_L_in, r_L_out, r_R_in, r_R_out] = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)
-                reward = - (self.fee_losses_since_last_check_time
-                            +
-                            (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 0) +
-                            # (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 10 * self.calculate_swap_in_fees(r_L_in)) +
-                            # self.calculate_swap_in_fees(r_L_in) +
-                            self.calculate_swap_out_fees(r_L_out) +
-                            (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 0) +
-                            # (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 10 * self.calculate_swap_in_fees(r_R_in)) +
-                            # self.calculate_swap_in_fees(r_R_in) +
-                            self.calculate_swap_out_fees(r_R_out)
-                            )
+                # reward = - (self.fee_losses_since_last_check_time
+                #             +
+                #             # (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 0) +
+                #             (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in)) +
+                #             # self.calculate_swap_in_fees(r_L_in) +
+                #             # self.calculate_swap_out_fees(r_L_out) +
+                #             (self.calculate_swap_out_fees(r_L_out) if ("L" in self.swap_out_successful_in_channel) else swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out)) +
+                #             # (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 0) +
+                #             (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in)) +
+                #             # self.calculate_swap_in_fees(r_R_in) +
+                #             # self.calculate_swap_out_fees(r_R_out)
+                #             (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
+                #             )
                 # TODO: save rewards and respective times
+                reward = - (self.fee_losses_since_last_check_time / (max(self.capacities["L"], self.capacities["R"])) +
+                            (self.calculate_swap_in_fees(r_L_in) / self.capacities["L"] if ("L" in self.swap_in_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in) / self.capacities["L"]) +
+                            (self.calculate_swap_out_fees(r_L_out) / self.capacities["L"] if ("L" in self.swap_out_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out) / self.capacities["L"]) +
+                            (self.calculate_swap_in_fees(r_R_in) / self.capacities["R"] if "R" in self.swap_in_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in) / self.capacities["R"]) +
+                            (self.calculate_swap_out_fees(r_R_out) / self.capacities["R"] if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out) / self.capacities["R"])
+                            )
 
                 done = 0
 
                 self.fee_losses_since_last_check_time = 0
                 self.swap_in_successful_in_channel = []
+                self.swap_out_successful_in_channel = []
 
                 mask = float(not done)
                 # self.replay_memory.push(state, processed_action, reward, next_state, mask)  # Append transition to memory
@@ -686,6 +700,8 @@ class Node:
             self.balance_history_times.append(self.env.now)
             self.balance_history_values["L"].append(self.local_balances["L"])
             self.balance_history_values["R"].append(self.local_balances["R"])
+            self.swap_out_successful_in_channel.append(neighbor)
+
             if self.verbose:
                 print("Time {:.2f}: SWAP-OUT completed in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
                 print("Time {:.2f}: New balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))

@@ -132,8 +132,7 @@ def rebalancing_amounts_not_both_positive(processed_action):
 
 
 def expand_action(action):
-    r_L = action[0]
-    r_R = action[1]
+    [r_L, r_R] = action
     expanded_action = [0.0, 0.0, 0.0, 0.0]     # expanded actions = (r_L_in, r_L_out, r_R_in, r_R_out)
 
     if r_L > 0.0:  # r_L > 0 ==> r_L_in = r_L
@@ -151,6 +150,13 @@ def expand_action(action):
         pass
 
     return expanded_action
+
+
+def process_action_to_be_more_than_min_rebalancing_percentage(raw_action, N):
+    [r_L, r_R] = raw_action
+    processed_r_L = 0.0 if (- N.min_rebalancing_percentage <= r_L <= N.min_rebalancing_percentage) else r_L
+    processed_r_R = 0.0 if (- N.min_rebalancing_percentage <= r_R <= N.min_rebalancing_percentage) else r_R
+    return [processed_r_L, processed_r_R]
 
 
 class LearningParameters:   # args in original code's main.py
