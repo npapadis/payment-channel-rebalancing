@@ -98,8 +98,15 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     #     amount_distribution_parameters_R_to_L = [amount_distribution_parameters_R_to_L, len(amount_distribution_parameters_R_to_L)]
 
     # total_simulation_time_estimation = max(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
-    # total_simulation_time_estimation = min(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
-    total_simulation_time_estimation = total_transactions_L_to_R * 1 / exp_mean_L_to_R
+    if (total_transactions_L_to_R > 0) and (total_transactions_R_to_L > 0):
+        total_simulation_time_estimation = min(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
+    elif (total_transactions_L_to_R > 0) and (total_transactions_R_to_L == 0):
+        total_simulation_time_estimation = total_transactions_L_to_R * 1 / exp_mean_L_to_R
+    elif (total_transactions_L_to_R == 0) and (total_transactions_R_to_L > 0):
+        total_transactions_R_to_L * 1 / exp_mean_R_to_L
+    else:
+        print("Simulation for 0 transactions is not possible. Exiting.")
+        exit(1)
     random.seed(seed)
 
     env = simpy.Environment()

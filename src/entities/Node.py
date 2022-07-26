@@ -582,7 +582,7 @@ class Node:
                     other_neighbor = "R" if neighbor == "L" else "L"
 
                     for n in [neighbor, other_neighbor]:
-                        self.demand_estimates[n] = sum(self.latest_transactions_amounts[n]) / (self.latest_transactions_times[n][-1] - self.latest_transactions_times[n][0])
+                        self.demand_estimates[n] = sum(self.latest_transactions_amounts[n]) / (self.latest_transactions_times[n][-1] - self.latest_transactions_times[n][0]) if len(self.latest_transactions_times[n]) > 0 else 0
 
                     self.net_demands[neighbor] = self.demand_estimates[neighbor] - (self.demand_estimates[other_neighbor] - self.calculate_relay_fees(self.demand_estimates[other_neighbor]))
 
