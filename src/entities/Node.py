@@ -523,9 +523,10 @@ class Node:
                     print_precision = "%.5f"
                     state_printable = [print_precision % elem for elem in state]
                     processed_action_printable = [print_precision % elem for elem in processed_action]
+                    raw_action_printable = [print_precision % elem for elem in raw_action]
                     next_state_printable = [print_precision % elem for elem in next_state]
-                    print("Time {:.2f}: Tuple pushed to memory:\n\tstate = {}\n\taction = {}\n\treward = {:.5f}\n\tnext state = {}".format(
-                            self.env.now, state_printable, processed_action_printable, reward, next_state_printable
+                    print("Time {:.2f}: Tuple pushed to memory:\n\tstate = {}\n\tprocessed action = {} from raw action = {}\n\treward = {:.5f}\n\tnext state = {}".format(
+                            self.env.now, state_printable, processed_action_printable, raw_action_printable, reward, next_state_printable
                         )
                     )
         else:
