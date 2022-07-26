@@ -98,7 +98,8 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     #     amount_distribution_parameters_R_to_L = [amount_distribution_parameters_R_to_L, len(amount_distribution_parameters_R_to_L)]
 
     # total_simulation_time_estimation = max(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
-    total_simulation_time_estimation = min(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
+    # total_simulation_time_estimation = min(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
+    total_simulation_time_estimation = total_transactions_L_to_R * 1 / exp_mean_L_to_R
     random.seed(seed)
 
     env = simpy.Environment()
@@ -142,11 +143,11 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     arrived_amount_L_to_R = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "L") and (t.destination == "R") and (t.status != "PENDING")))
     arrived_amount_R_to_L = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.source == "R") and (t.destination == "L") and (t.status != "PENDING")))
     arrived_amount_node_total = sum(t.amount for t in all_transactions_list if ((t.time_of_arrival >= measurement_interval[0]) and (t.time_of_arrival < measurement_interval[1]) and (t.status != "PENDING")))
-    success_rate_L_to_R = success_count_L_to_R/arrived_count_L_to_R
-    success_rate_R_to_L = success_count_R_to_L/arrived_count_R_to_L
+    success_rate_L_to_R = (success_count_L_to_R/arrived_count_L_to_R) if arrived_count_L_to_R > 0 else 0
+    success_rate_R_to_L = (success_count_R_to_L/arrived_count_R_to_L) if arrived_count_R_to_L > 0 else 0
     success_rate_node_total = success_count_node_total / arrived_count_node_total
-    normalized_throughput_L_to_R = success_amount_L_to_R/arrived_amount_L_to_R      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
-    normalized_throughput_R_to_L = success_amount_R_to_L/arrived_amount_R_to_L      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
+    normalized_throughput_L_to_R = (success_amount_L_to_R/arrived_amount_L_to_R) if arrived_amount_L_to_R > 0 else 0      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
+    normalized_throughput_R_to_L = (success_amount_R_to_L/arrived_amount_R_to_L) if arrived_amount_R_to_L > 0 else 0      # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
     normalized_throughput_node_total = success_amount_node_total/arrived_amount_node_total     # should be divided by duration of measurement_interval in both numerator and denominator, but these terms cancel out
 
     initial_fortune = node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]
