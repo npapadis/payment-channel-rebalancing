@@ -23,6 +23,7 @@ class Node:
         self.on_chain_budget = node_parameters["on_chain_budget"]
         self.target_max_on_chain_amount = self.on_chain_budget * 30
         # self.target_max_on_chain_amount = 100 * max(self.capacities["L"], self.capacities["R"])
+        self.initial_fortune = node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]
 
         self.swap_IN_amounts_in_progress = {"L": 0.0, "R": 0.0}
         self.swap_OUT_amounts_in_progress = {"L": 0.0, "R": 0.0}
@@ -508,12 +509,17 @@ class Node:
                 #             (self.calculate_swap_in_fees(r_R_in) / self.capacities["R"] if "R" in self.swap_in_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in) / self.capacities["R"]) +
                 #             (self.calculate_swap_out_fees(r_R_out) / self.capacities["R"] if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out) / self.capacities["R"])
                 #             )
-                reward = - (self.fee_losses_since_last_check_time +
-                            (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in)) +
-                            (self.calculate_swap_out_fees(r_L_out) if ("L" in self.swap_out_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out)) +
-                            (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in)) +
-                            (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
-                            ) / (max(self.capacities["L"], self.capacities["R"]))
+                # reward = - (self.fee_losses_since_last_check_time +
+                #             (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in)) +
+                #             (self.calculate_swap_out_fees(r_L_out) if ("L" in self.swap_out_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out)) +
+                #             (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in)) +
+                #             (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
+                #             ) / (max(self.capacities["L"], self.capacities["R"]))
+
+                total_fortune_before = next_state[1] + next_state[2] + next_state[4]
+                total_fortune_after = state[1] + state[2] + state[4]
+                reward = (total_fortune_after - total_fortune_before) / self.initial_fortune
+
 
                 done = 0
 
