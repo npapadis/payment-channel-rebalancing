@@ -30,11 +30,13 @@ class Node:
         self.rebalancing_parameters = rebalancing_parameters
         self.verbose = verbose
         self.verbose_also_print_transactions = verbose_also_print_transactions
-        self.latest_transactions_buffer_size = 20
-        self.latest_transactions_times = {"L": [], "R": []}
-        self.latest_transactions_amounts = {"L": [], "R": []}
-        self.demand_estimates = {"L": 0.0, "R": 0.0}
-        self.net_demands = {"L": 0.0, "R": 0.0}
+        self.latest_transactions_buffer_size = 100
+        self.latest_transactions = []
+        self.A_hat_net_LN = 0
+        self.A_hat_net_NL = 0
+        self.A_hat_net_NR = 0
+        self.A_hat_net_RN = 0
+
         if self.rebalancing_parameters["rebalancing_policy"] == "SAC":
             self.learning_parameters = LearningParameters()
             torch.manual_seed(self.learning_parameters.seed)
@@ -155,12 +157,9 @@ class Node:
 
     def process_transaction(self, t):
         # Update the memory of the latest transactions
-        if len(self.latest_transactions_times[t.source]) >= self.latest_transactions_buffer_size:
-            self.latest_transactions_times[t.source].pop(0)
-        self.latest_transactions_times[t.source].append(t.time_of_arrival)
-        if len(self.latest_transactions_amounts[t.source]) >= self.latest_transactions_buffer_size:
-            self.latest_transactions_amounts[t.source].pop(0)
-        self.latest_transactions_amounts[t.source].append(t.amount)
+        if len(self.latest_transactions) >= self.latest_transactions_buffer_size:
+            self.latest_transactions.pop(0)
+        self.latest_transactions.append(t)
 
         # If feasible, execute; otherwise, reject
         if (t.amount >= self.calculate_relay_fees(t.amount)) and (t.amount <= self.remote_balances[t.previous_node]) and (t.amount - self.calculate_relay_fees(t.amount) <= self.local_balances[t.next_node]):
@@ -192,7 +191,20 @@ class Node:
         if self.rebalancing_parameters["rebalancing_policy"] == "none":
             return
 
-        elif self.rebalancing_parameters["rebalancing_policy"] in ["autoloop", "loopmax"]:
+        # Updates estimates according to buffer
+        duration_of_transactions_in_buffer = (self.latest_transactions[-1].time_of_arrival - self.latest_transactions[0].time_of_arrival) if len(self.latest_transactions) > 0 else np.Inf
+
+        # Estimations according to the buffer of amounts added to the respective balance per minute (unit time)
+        self.A_hat_net_NL = (
+                            sum([t.amount for t in self.latest_transactions if t.source == "L"]) - sum([t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "R"])
+                            ) / duration_of_transactions_in_buffer
+        self.A_hat_net_LN = - self.A_hat_net_NL
+        self.A_hat_net_NR = (
+                            sum([t.amount for t in self.latest_transactions if t.source == "R"]) - sum([t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "L"])
+                            ) / duration_of_transactions_in_buffer
+        self.A_hat_net_RN = - self.A_hat_net_NR
+
+        if self.rebalancing_parameters["rebalancing_policy"] in ["autoloop", "loopmax"]:
             for neighbor in ["L", "R"]:
                 self.env.process(self.perform_rebalancing_if_needed_in_single_channel(neighbor))
 
@@ -587,15 +599,12 @@ class Node:
                 elif self.rebalancing_parameters["rebalancing_policy"] == "loopmax":
                     other_neighbor = "R" if neighbor == "L" else "L"
 
-                    for n in [neighbor, other_neighbor]:
-                        self.demand_estimates[n] = sum(self.latest_transactions_amounts[n]) / (self.latest_transactions_times[n][-1] - self.latest_transactions_times[n][0]) if len(self.latest_transactions_times[n]) > 0 else 0
+                    net_rate_of_local_balance_change = {"L": self.A_hat_net_NL, "R": self.A_hat_net_NR}
 
-                    self.net_demands[neighbor] = self.demand_estimates[neighbor] - (self.demand_estimates[other_neighbor] - self.calculate_relay_fees(self.demand_estimates[other_neighbor]))
-
-                    if self.net_demands[neighbor] < 0:  # SWAP-IN
-                        expected_time_to_depletion = self.local_balances[neighbor] / (- self.net_demands[neighbor])
+                    if net_rate_of_local_balance_change[neighbor] < 0:  # SWAP-IN
+                        expected_time_to_depletion = self.local_balances[neighbor] / (- net_rate_of_local_balance_change[neighbor])
                         if expected_time_to_depletion - self.rebalancing_parameters["check_interval"] < self.rebalancing_parameters["T_conf"]:
-                            safety_margin_in_coins = - self.net_demands[neighbor] * self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
+                            safety_margin_in_coins = - net_rate_of_local_balance_change[neighbor] * self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
                             swap_amount = self.max_swap_in_amount(neighbor) - safety_margin_in_coins
                             # swap_amount = self.max_swap_in_amount(neighbor)
                             yield self.env.process(self.swap_in(neighbor, swap_amount, rebalance_request))
@@ -603,10 +612,10 @@ class Node:
                             pass
                             if self.verbose:
                                 print("Time {:.2f}: SWAP not needed in channel N-{}.".format(self.env.now, neighbor))
-                    elif self.net_demands[neighbor] > 0:  # SWAP-OUT
-                        expected_time_to_saturation = self.remote_balances[neighbor] / self.net_demands[neighbor]
+                    elif net_rate_of_local_balance_change[neighbor] > 0:  # SWAP-OUT
+                        expected_time_to_saturation = self.remote_balances[neighbor] / net_rate_of_local_balance_change[neighbor]
                         if expected_time_to_saturation - self.rebalancing_parameters["check_interval"] < self.rebalancing_parameters["T_conf"]:
-                            safety_margin_in_coins = self.net_demands[neighbor] * self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
+                            safety_margin_in_coins = net_rate_of_local_balance_change[neighbor] * self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
                             swap_amount = self.local_balances[neighbor] - safety_margin_in_coins
                             yield self.env.process(self.swap_out(neighbor, swap_amount, rebalance_request))
                         elif self.verbose:
