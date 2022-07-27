@@ -36,6 +36,8 @@ class Node:
         self.A_hat_net_NL = 0
         self.A_hat_net_NR = 0
         self.A_hat_net_RN = 0
+        self.b_hat_LN_future_estimate = 0
+        self.b_hat_RN_future_estimate = 0
 
         if self.rebalancing_parameters["rebalancing_policy"] == "SAC":
             self.learning_parameters = LearningParameters()
@@ -48,9 +50,12 @@ class Node:
             #         dtype=float
             #     )
             self.observation_space = spaces.Box(
-                    low=np.zeros(5),
-                    high=np.ones(5),
-                    shape=(5,),
+                    # low=np.zeros(5),
+                    low=np.zeros(7),
+                    # high=np.ones(5),
+                    high=np.ones(7),
+                    # shape=(5,),
+                    shape=(7,),
                     dtype=float
                 )
             # self.action_space = spaces.Box(
@@ -234,6 +239,10 @@ class Node:
                         self.update_count += 1
 
                 # Perform environment step
+
+                self.b_hat_LN_future_estimate = max(0, min(self.remote_balances["L"] + self.A_hat_net_LN*self.rebalancing_parameters["T_conf"], self.capacities["L"]))
+                self.b_hat_RN_future_estimate = max(0, min(self.remote_balances["R"] + self.A_hat_net_RN*self.rebalancing_parameters["T_conf"], self.capacities["R"]))
+
                 # state = [
                 #     self.remote_balances["L"],
                 #     self.local_balances["L"],
@@ -251,6 +260,8 @@ class Node:
                     self.local_balances["R"] / self.capacities["R"],
                     self.remote_balances["R"] / self.capacities["R"],
                     self.on_chain_budget / self.target_max_on_chain_amount,
+                    self.b_hat_LN_future_estimate / self.capacities["L"],
+                    self.b_hat_RN_future_estimate / self.capacities["R"]
                 ]
 
                 # constraint_is_respected = False
@@ -478,6 +489,8 @@ class Node:
                             rebalance_request=rebalance_request_R)
                         )
 
+                self.b_hat_LN_future_estimate = max(0, min(self.remote_balances["L"] + self.A_hat_net_LN*self.rebalancing_parameters["T_conf"], self.capacities["L"]))
+                self.b_hat_RN_future_estimate = max(0, min(self.remote_balances["R"] + self.A_hat_net_RN*self.rebalancing_parameters["T_conf"], self.capacities["R"]))
                 # next_state = [
                 #     self.remote_balances["L"],
                 #     self.local_balances["L"],
@@ -491,6 +504,8 @@ class Node:
                     self.local_balances["R"] / self.capacities["R"],
                     self.remote_balances["R"] / self.capacities["R"],
                     self.on_chain_budget / self.target_max_on_chain_amount,
+                    self.b_hat_LN_future_estimate / self.capacities["L"],
+                    self.b_hat_RN_future_estimate / self.capacities["R"]
                 ]
 
                 # reward = - ( self.fee_losses_since_last_check_time
