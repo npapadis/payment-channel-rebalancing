@@ -21,7 +21,6 @@ class Node:
         self.capacities = {"L": node_parameters["capacity_L"], "R": node_parameters["capacity_R"]}
         self.fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
         self.on_chain_budget = node_parameters["on_chain_budget"]
-        self.target_max_on_chain_amount = self.on_chain_budget * 30
         # self.target_max_on_chain_amount = 100 * max(self.capacities["L"], self.capacities["R"])
         self.initial_fortune = node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]
         self.node_is_accepting_transactions = True
@@ -44,6 +43,7 @@ class Node:
 
         if self.rebalancing_parameters["rebalancing_policy"] == "SAC":
             self.learning_parameters = LearningParameters()
+            self.target_max_on_chain_amount = self.on_chain_budget * self.learning_parameters.on_chain_normalization_multiplier
             torch.manual_seed(self.learning_parameters.seed)
             # self.observation_space = spaces.Box(
             #         low=np.zeros(5),
@@ -83,8 +83,8 @@ class Node:
             self.update_count = 0
             self.reward_normalizer = self.initial_fortune / 100
             self.writer = SummaryWriter('../runs/{}_SAC_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), "autotune" if self.learning_parameters.automatic_entropy_tuning else "")) # Tensorboard setup
-            self.min_swap_threshold_as_percentage_of_capacity = 0.2
-            self.swap_failure_penalty_coefficient = 20
+            self.min_swap_threshold_as_percentage_of_capacity = self.learning_parameters.min_swap_threshold_as_percentage_of_capacity
+            self.swap_failure_penalty_coefficient = self.learning_parameters.swap_failure_penalty_coefficient
             self.steps_in_current_episode = 0
             self.episode_is_done = False
         else:
@@ -227,6 +227,7 @@ class Node:
             if self.episode_is_done:  # if episode is over, then perform reset to a balanced state
                 if self.verbose:
                     print("Time {:.2f}: Resetting channels to balanced state.".format(self.env.now))
+                    print("Time {:.2f}: Current balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
 
                 self.node_is_accepting_transactions = False
                 for neighbor in ["L", "R"]:
@@ -241,6 +242,7 @@ class Node:
 
                 if self.verbose:
                     print("Time {:.2f}: SWAP check performed for all channels.".format(self.env.now))
+                    print("Time {:.2f}: Current balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
 
                 # if (self.rebalancing_locks["L"].count == 0) and (self.rebalancing_locks["R"].count == 0):  # if no rebalancing is in progress in any channel
                 with self.rebalancing_locks["L"].request() as rebalance_request_L, self.rebalancing_locks["R"].request() as rebalance_request_R:  # Generate a request event for all channel locks
@@ -651,8 +653,8 @@ class Node:
                     #             (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
                     #             ) / (max(self.capacities["L"], self.capacities["R"]))
 
-                    total_fortune_after = next_state[1] * self.capacities["L"] + next_state[2] * self.capacities["R"] + next_state[4] * self.target_max_on_chain_amount
                     total_fortune_before = state[1] * self.capacities["L"] + state[2] * self.capacities["R"] + state[4] * self.target_max_on_chain_amount
+                    total_fortune_after = next_state[1] * self.capacities["L"] + next_state[2] * self.capacities["R"] + next_state[4] * self.target_max_on_chain_amount
                     reward = (total_fortune_after - total_fortune_before) / self.reward_normalizer
 
 
@@ -684,10 +686,11 @@ class Node:
                         print_precision = "%.2f"
                         state_printable = [print_precision % elem for elem in state_absolute]
                         processed_action_printable = [print_precision % elem for elem in processed_action_absolute_as_a_list]
-                        raw_action_printable = [print_precision % elem for elem in raw_action_absolute]
+                        raw_action_printable = [print_precision % elem for elem in raw_action]
+                        raw_action_absolute_printable = [print_precision % elem for elem in raw_action_absolute]
                         next_state_printable = [print_precision % elem for elem in next_state_absolute]
-                        print("Time {:.2f}: Tuple pushed to memory:\n\tstate absolute = {}\n\tprocessed action absolute = {} from raw action absolute = {}\n\treward = {:.5f}\n\tnext state absolute = {}".format(
-                                self.env.now, state_printable, processed_action_printable, raw_action_printable, reward, next_state_printable
+                        print("Time {:.2f}: Tuple pushed to memory:\n\tstate absolute = {}\n\tprocessed action absolute = {} from raw action absolute = {} and raw action = {}\n\treward = {:.5f}\n\tnext state absolute = {}".format(
+                                self.env.now, state_printable, processed_action_printable, raw_action_absolute_printable, raw_action_printable, reward, next_state_printable
                             )
                         )
 
@@ -700,6 +703,10 @@ class Node:
     def perform_rebalancing_if_needed_in_single_channel(self, neighbor, reset=False):
         if self.verbose and not reset:
             print("Time {:.2f}: SWAP check performed for channel N-{}.".format(self.env.now, neighbor))
+            print("Time {:.2f}: Current balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(
+                    self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"],
+                    self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"],
+                    self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
 
         if self.rebalancing_locks[neighbor].count == 0:  # if no rebalancing in progress in the N-neighbor channel
             with self.rebalancing_locks[neighbor].request() as rebalance_request:  # Generate a request event
@@ -850,7 +857,7 @@ class Node:
         self.rebalancing_history_types.append(neighbor + "-OUT")
         self.rebalancing_history_amounts.append(swap_amount)
         if self.verbose:
-            print("Time {:.2f}: SWAP-OUT initiated in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
+            print("Time {:.2f}: SWAP-OUT requested in channel N-{} with amount {:.2f}.".format(self.env.now, neighbor, swap_amount))
 
         if swap_amount <= 0:    # only possible under the Loopmax policy
             if self.verbose:

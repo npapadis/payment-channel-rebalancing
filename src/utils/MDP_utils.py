@@ -196,6 +196,9 @@ class LearningParameters:   # args in original code's main.py
         self.replay_size = 100                      # Size of replay buffer
         self.cuda = False                           # Run on CUDA
 
+        self.on_chain_normalization_multiplier = 30
         self.episode_duration = 99
         self.target_local_balance_fractions_at_state_reset = {"L": 0.5, "R": 0.5}   # times the capacity of each channel
         # self.target_local_balance_fractions_at_state_reset = {"L": 0.0, "R": 1.0}   # times the capacity of each channel
+        self.min_swap_threshold_as_percentage_of_capacity = 0.3
+        self.swap_failure_penalty_coefficient = 20
