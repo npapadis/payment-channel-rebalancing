@@ -276,6 +276,7 @@ class Node:
                     raw_action = self.action_space.sample()  # Sample random action
                 else:
                     raw_action = self.agent.select_action(state)  # Sample action from policy
+                    # raw_action = self.agent.select_action_within_constraints(state)  # Sample action from policy, making sure the acton respects the current constraints
 
                 processed_action = process_action_to_respect_constraints(   # processed_action = (r_L, r_R), inside constraint bounds or zero
                         raw_action=raw_action,

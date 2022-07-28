@@ -74,15 +74,16 @@ class GaussianPolicy(nn.Module):
 
         self.apply(weights_init_)
 
+        self.action_space = action_space
         # action rescaling
-        if action_space is None:
+        if self.action_space is None:
             self.action_scale = torch.tensor(1.)
             self.action_bias = torch.tensor(0.)
         else:
             self.action_scale = torch.FloatTensor(
-                (action_space.high - action_space.low) / 2.)
+                (self.action_space.high - self.action_space.low) / 2.)
             self.action_bias = torch.FloatTensor(
-                (action_space.high + action_space.low) / 2.)
+                (self.action_space.high + self.action_space.low) / 2.)
 
     def forward(self, state):
         x = F.relu(self.linear1(state))
@@ -104,6 +105,28 @@ class GaussianPolicy(nn.Module):
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + epsilon)
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
+        return action, log_prob, mean
+
+    def sample_within_constraints(self, state):
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        normal = Normal(mean, std)
+        x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
+        y_t = torch.tanh(x_t)
+
+        action_space_current_high_due_to_constraints = torch.FloatTensor([min(state[0][5], state[0][4], self.action_space.high[0]), min(state[0][6], state[0][4], self.action_space.high[1])])      # TODO: check if Markovianity is hurt by the capacity (action_space.high) upper bound
+        action_space_current_low_due_to_constraints = torch.FloatTensor([- state[0][1], - state[0][2]])
+        action_scale_at_this_step = torch.FloatTensor((action_space_current_high_due_to_constraints - action_space_current_low_due_to_constraints) / 2.)
+        action_bias_at_this_step = torch.FloatTensor((action_space_current_high_due_to_constraints + action_space_current_low_due_to_constraints) / 2.)
+
+        print("low = {}, high = {}".format(action_space_current_low_due_to_constraints, action_space_current_high_due_to_constraints))
+
+        action = y_t * action_scale_at_this_step + action_bias_at_this_step
+        log_prob = normal.log_prob(x_t)
+        # Enforcing Action Bound
+        log_prob -= torch.log(action_scale_at_this_step * (1 - y_t.pow(2)) + epsilon)
+        log_prob = log_prob.sum(1, keepdim=True)
+        mean = torch.tanh(mean) * action_scale_at_this_step + action_bias_at_this_step
         return action, log_prob, mean
 
     def to(self, device):

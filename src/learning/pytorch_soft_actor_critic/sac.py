@@ -49,6 +49,15 @@ class SAC(object):
             _, _, action = self.policy.sample(state)
         return action.detach().cpu().numpy()[0]
 
+    def select_action_within_constraints(self, state, evaluate=False):
+        # Sample action from policy, making sure the acton respects the current constraints
+        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
+        if evaluate is False:
+            action, _, _ = self.policy.sample_within_constraints(state)
+        else:
+            _, _, action = self.policy.sample_within_constraints(state)
+        return action.detach().cpu().numpy()[0]
+
     def update_parameters(self, memory, batch_size, updates):
         # Sample a batch from memory
         state_batch, action_batch, reward_batch, next_state_batch, mask_batch = memory.sample(batch_size=batch_size)
@@ -61,6 +70,7 @@ class SAC(object):
 
         with torch.no_grad():
             next_state_action, next_state_log_pi, _ = self.policy.sample(next_state_batch)
+            # next_state_action, next_state_log_pi, _ = self.policy.sample_within_constraints(next_state_batch)
             qf1_next_target, qf2_next_target = self.critic_target(next_state_batch, next_state_action)
             min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
             next_q_value = reward_batch + mask_batch * self.gamma * (min_qf_next_target)
@@ -74,6 +84,7 @@ class SAC(object):
         self.critic_optim.step()
 
         pi, log_pi, _ = self.policy.sample(state_batch)
+        # pi, log_pi, _ = self.policy.sample_within_constraints(state_batch)
 
         qf1_pi, qf2_pi = self.critic(state_batch, pi)
         min_qf_pi = torch.min(qf1_pi, qf2_pi)
