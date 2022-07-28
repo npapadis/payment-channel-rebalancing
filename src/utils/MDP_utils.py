@@ -195,4 +195,7 @@ class LearningParameters:   # args in original code's main.py
         self.target_update_interval = 1             # Value target update per number of updates per step
         self.replay_size = 100                      # Size of replay buffer
         self.cuda = False                           # Run on CUDA
-    
+
+        self.episode_duration = 99
+        self.target_local_balance_fractions_at_state_reset = {"L": 0.5, "R": 0.5}   # times the capacity of each channel
+        # self.target_local_balance_fractions_at_state_reset = {"L": 0.0, "R": 1.0}   # times the capacity of each channel
