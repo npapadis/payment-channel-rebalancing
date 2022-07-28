@@ -152,10 +152,28 @@ def expand_action(action):
     return expanded_action
 
 
-def process_action_to_be_more_than_min_rebalancing_percentage(raw_action, N):
+def process_action_to_be_more_than_min_rebalancing_percentage_v1(raw_action, N):
+    # Version when action represents percentage of total channel capacity
     [r_L, r_R] = raw_action
     processed_r_L = 0.0 if (- N.min_swap_threshold_as_percentage_of_capacity <= r_L <= N.min_swap_threshold_as_percentage_of_capacity) else r_L
     processed_r_R = 0.0 if (- N.min_swap_threshold_as_percentage_of_capacity <= r_R <= N.min_swap_threshold_as_percentage_of_capacity) else r_R
+    return [processed_r_L, processed_r_R]
+
+
+def process_action_to_be_more_than_min_rebalancing_percentage_v2(raw_action, N):
+    # Version when action represents percentage of liquidity available due to current constraints
+    [r_L, r_R] = raw_action
+
+    processed_r_L = 0.0 if (
+                               ((r_L < 0.0) and (- N.min_swap_threshold_as_percentage_of_capacity * N.capacities["L"] <= r_L * N.max_swap_out_amount_due_to_current_constraints["L"]))
+                               or ((r_L >= 0.0) and (r_L * N.max_swap_in_amount_due_to_current_constraints["L"] <= N.min_swap_threshold_as_percentage_of_capacity * N.capacities["L"]))
+    ) else r_L
+
+    processed_r_R = 0.0 if (
+            ((r_R < 0.0) and (- N.min_swap_threshold_as_percentage_of_capacity * N.capacities["R"] <= r_R * N.max_swap_out_amount_due_to_current_constraints["R"]))
+            or ((r_R >= 0.0) and (r_R * N.max_swap_in_amount_due_to_current_constraints["R"] <= N.min_swap_threshold_as_percentage_of_capacity * N.capacities["R"]))
+    ) else r_R
+
     return [processed_r_L, processed_r_R]
 
 
