@@ -154,8 +154,8 @@ def expand_action(action):
 
 def process_action_to_be_more_than_min_rebalancing_percentage(raw_action, N):
     [r_L, r_R] = raw_action
-    processed_r_L = 0.0 if (- N.min_rebalancing_percentage <= r_L <= N.min_rebalancing_percentage) else r_L
-    processed_r_R = 0.0 if (- N.min_rebalancing_percentage <= r_R <= N.min_rebalancing_percentage) else r_R
+    processed_r_L = 0.0 if (- N.min_swap_threshold_as_percentage_of_capacity <= r_L <= N.min_swap_threshold_as_percentage_of_capacity) else r_L
+    processed_r_R = 0.0 if (- N.min_swap_threshold_as_percentage_of_capacity <= r_R <= N.min_swap_threshold_as_percentage_of_capacity) else r_R
     return [processed_r_L, processed_r_R]
 
 
