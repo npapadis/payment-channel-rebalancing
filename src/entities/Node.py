@@ -86,6 +86,7 @@ class Node:
             self.min_swap_threshold_as_percentage_of_capacity = self.learning_parameters.min_swap_threshold_as_percentage_of_capacity
             self.swap_failure_penalty_coefficient = self.learning_parameters.swap_failure_penalty_coefficient
             self.steps_in_current_episode = 0
+            self.total_steps = 0
             self.episode_is_done = False
         else:
             self.learning_parameters = None
@@ -249,7 +250,7 @@ class Node:
                     yield rebalance_request_L & rebalance_request_R
 
                     # Update parameters of all the networks if needed
-                    if (len(self.replay_memory) > self.learning_parameters.batch_size) and (self.steps_in_current_episode > 0):
+                    if (len(self.replay_memory) > self.learning_parameters.batch_size) and (self.steps_in_current_episode > 0) and (self.total_steps % self.learning_parameters.nn_update_interval == 0):
                         for i in range(self.learning_parameters.updates_per_step):
                             # Update parameters of all the networks
                             critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = self.agent.update_parameters(
@@ -694,6 +695,7 @@ class Node:
                             )
                         )
 
+            self.total_steps += 1
 
         else:
             print("{} is not a valid rebalancing policy.".format(self.rebalancing_parameters["rebalancing_policy"]))
