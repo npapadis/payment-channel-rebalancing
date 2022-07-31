@@ -204,14 +204,14 @@ def main():
     # traj.f_add_parameter('server_min_swap_amount', server_min_swap_amount, comment='Minimum amount the LSP allows for a swap')
     traj.f_add_parameter('server_swap_fee', server_swap_fee, comment='Percentage of swap amount the LSP charges as fees')
     traj.f_add_parameter('rebalancing_policy', rebalancing_policy, comment='Rebalancing policy')
-    traj.f_add_parameter('lower_threshold', lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in according to the autoloop policy')
-    traj.f_add_parameter('upper_threshold', upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out according to the autoloop policy')
+    traj.f_add_parameter('lower_threshold', lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in according to the Autoloop policy')
+    traj.f_add_parameter('upper_threshold', upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out according to the Autoloop policy')
     # traj.f_add_parameter('default_swap_amount', default_swap_amount, comment='Default swap amount node N requests')
     traj.f_add_parameter('check_interval', check_interval, comment='Time in seconds every which a check for rebalancing is performed')
     traj.f_add_parameter('T_conf', T_conf, comment='Confirmation time (seconds) for an on-chain transaction')
     traj.f_add_parameter('miner_fee', miner_fee, comment='Miner fee for an on-chain transaction')
-    traj.f_add_parameter('safety_margin_in_minutes_L', safety_margin_in_minutes_L, comment='Safety margin in minutes for swaps under the loopmax policy for node L')
-    traj.f_add_parameter('safety_margin_in_minutes_R', safety_margin_in_minutes_R, comment='Safety margin in minutes for swaps under the loopmax policy for node R')
+    traj.f_add_parameter('safety_margin_in_minutes_L', safety_margin_in_minutes_L, comment='Safety margin in minutes for swaps under the Loopmax policy for node L')
+    traj.f_add_parameter('safety_margin_in_minutes_R', safety_margin_in_minutes_R, comment='Safety margin in minutes for swaps under the Loopmax policy for node R')
 
     # traj.f_add_parameter('verbose', verbose, comment='Verbose output')
     traj.f_add_parameter('verbose', verbose, comment='Verbose output at rebalancing check times')
@@ -232,10 +232,13 @@ def main():
         # 'proportional_fee': [0.02],
         # 'upper_threshold': [0.7, 0.8, 0.9, 0.95, 0.99],
         # 'upper_threshold': [0.7],
-        'rebalancing_policy': ['none', 'autoloop', 'loopmax'],
-        # 'rebalancing_policy': ['none', 'autoloop', 'autoloop-infrequent', 'loopmax'],
-        # 'rebalancing_policy': ['autoloop'],
-        # 'rebalancing_policy': ['autoloop-infrequent'],
+        # 'rebalancing_policy': ['None', 'Autoloop', 'Loopmax'],
+        'rebalancing_policy': ['None', 'Autoloop', 'Loopmax', 'RebEL'],
+        # 'rebalancing_policy': ['RebEL'],
+        # 'rebalancing_policy': ['None', 'Autoloop', 'Autoloop-infrequent', 'Loopmax'],
+        # 'rebalancing_policy': ['Autoloop'],
+        # 'rebalancing_policy': ['Loopmax'],
+        # 'rebalancing_policy': ['Autoloop-infrequent'],
         'seed': seeds[0:traj.num_of_experiments]
     }))
 

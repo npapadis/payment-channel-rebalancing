@@ -41,7 +41,7 @@ class Node:
         self.max_swap_in_amount_due_to_current_constraints = self.capacities
         self.max_swap_out_amount_due_to_current_constraints = self.capacities
 
-        if self.rebalancing_parameters["rebalancing_policy"] == "SAC":
+        if self.rebalancing_parameters["rebalancing_policy"] == "RebEL":
             self.learning_parameters = LearningParameters()
             self.target_max_on_chain_amount = self.on_chain_budget * self.learning_parameters.on_chain_normalization_multiplier
             torch.manual_seed(self.learning_parameters.seed)
@@ -199,27 +199,27 @@ class Node:
 
     # def perform_rebalancing_if_needed(self, neighbor):
     def perform_rebalancing_if_needed(self):
-        if self.rebalancing_parameters["rebalancing_policy"] == "none":
+        if self.rebalancing_parameters["rebalancing_policy"] == "None":
             return
 
         # Updates estimates according to buffer
-        duration_of_transactions_in_buffer = (self.latest_transactions[-1].time_of_arrival - self.latest_transactions[0].time_of_arrival) if len(self.latest_transactions) > 0 else np.Inf
+        timespan_of_transactions_in_buffer = (self.latest_transactions[-1].time_of_arrival - self.latest_transactions[0].time_of_arrival) if len(self.latest_transactions) > 0 else np.Inf
 
         # Estimations according to the buffer of amounts added to the respective balance per minute (unit time)
         self.A_hat_net_NL = (
                             sum([t.amount for t in self.latest_transactions if t.source == "L"]) - sum([t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "R"])
-                            ) / duration_of_transactions_in_buffer
+                            ) / timespan_of_transactions_in_buffer
         self.A_hat_net_LN = - self.A_hat_net_NL
         self.A_hat_net_NR = (
                             sum([t.amount for t in self.latest_transactions if t.source == "R"]) - sum([t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "L"])
-                            ) / duration_of_transactions_in_buffer
+                            ) / timespan_of_transactions_in_buffer
         self.A_hat_net_RN = - self.A_hat_net_NR
 
-        if self.rebalancing_parameters["rebalancing_policy"] in ["autoloop", "loopmax"]:
+        if self.rebalancing_parameters["rebalancing_policy"] in ["Autoloop", "Loopmax"]:
             for neighbor in ["L", "R"]:
                 self.env.process(self.perform_rebalancing_if_needed_in_single_channel(neighbor=neighbor))
 
-        elif self.rebalancing_parameters["rebalancing_policy"] == "SAC":
+        elif self.rebalancing_parameters["rebalancing_policy"] == "RebEL":
 
             self.b_hat_LN_future_estimate = max(0, min(self.remote_balances["L"] + self.A_hat_net_LN * self.rebalancing_parameters["T_conf"], self.capacities["L"])) if (self.steps_in_current_episode > 0) else 0
             self.b_hat_RN_future_estimate = max(0, min(self.remote_balances["R"] + self.A_hat_net_RN * self.rebalancing_parameters["T_conf"], self.capacities["R"])) if (self.steps_in_current_episode > 0) else 0
@@ -712,7 +712,7 @@ class Node:
             with self.rebalancing_locks[neighbor].request() as rebalance_request:  # Generate a request event
                 yield rebalance_request
 
-                if self.rebalancing_parameters["rebalancing_policy"] == "autoloop":
+                if self.rebalancing_parameters["rebalancing_policy"] == "Autoloop":
                     midpoint = self.capacities[neighbor] * (self.rebalancing_parameters["lower_threshold"] + self.rebalancing_parameters["upper_threshold"]) / 2
 
                     if self.local_balances[neighbor] < self.rebalancing_parameters["lower_threshold"] * self.capacities[neighbor]:  # SWAP-IN
@@ -726,7 +726,7 @@ class Node:
                         if self.verbose:
                             print("Time {:.2f}: SWAP not needed in channel N-{}.".format(self.env.now, neighbor))
                 #
-                # elif self.rebalancing_parameters["rebalancing_policy"] == "autoloop-infrequent":
+                # elif self.rebalancing_parameters["rebalancing_policy"] == "Autoloop-infrequent":
                 #     midpoint = self.capacities[neighbor] * (self.rebalancing_parameters["lower_threshold"] + self.rebalancing_parameters["upper_threshold"]) / 2
                 #     other_neighbor = "R" if neighbor == "L" else "L"
                 #     self.net_demands[neighbor] = self.demand_estimates[neighbor] - (self.demand_estimates[other_neighbor] - self.calculate_fees(self.demand_estimates[other_neighbor]))
@@ -742,7 +742,7 @@ class Node:
                 #         if self.verbose:
                 #             print("Time {:.2f}: SWAP not needed in channel N-{}.". format(self.env.now, neighbor))
 
-                elif self.rebalancing_parameters["rebalancing_policy"] == "loopmax":
+                elif self.rebalancing_parameters["rebalancing_policy"] == "Loopmax":
                     other_neighbor = "R" if neighbor == "L" else "L"
 
                     net_rate_of_local_balance_change = {"L": self.A_hat_net_NL, "R": self.A_hat_net_NR}
@@ -771,7 +771,7 @@ class Node:
                         if self.verbose:
                             print("Time {:.2f}: SWAP not needed in channel N-{}.".format(self.env.now, neighbor))
 
-                elif (self.rebalancing_parameters["rebalancing_policy"] == "SAC") and (reset is True):
+                elif (self.rebalancing_parameters["rebalancing_policy"] == "RebEL") and (reset is True):
 
                     # Reset channel to "balanced" state
                     target_local_balance_absolute = self.learning_parameters.target_local_balance_fractions_at_state_reset[neighbor] * self.capacities[neighbor]
