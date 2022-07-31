@@ -204,3 +204,4 @@ class LearningParameters:   # args in original code's main.py
         # self.target_local_balance_fractions_at_state_reset = {"L": 0.0, "R": 1.0}   # times the capacity of each channel
         self.min_swap_threshold_as_percentage_of_capacity = 0.3
         self.swap_failure_penalty_coefficient = 20
+        self.penalty_for_swap_in_wrong_direction = 0

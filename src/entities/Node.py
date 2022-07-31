@@ -81,7 +81,7 @@ class Node:
                 seed=self.learning_parameters.seed
             )
             self.update_count = 0
-            self.reward_normalizer = self.initial_fortune / 100
+            self.reward_normalizer = self.initial_fortune / 1000
             self.writer = SummaryWriter('../runs/{}_SAC_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), "autotune" if self.learning_parameters.automatic_entropy_tuning else "")) # Tensorboard setup
             self.min_swap_threshold_as_percentage_of_capacity = self.learning_parameters.min_swap_threshold_as_percentage_of_capacity
             self.swap_failure_penalty_coefficient = self.learning_parameters.swap_failure_penalty_coefficient
@@ -656,7 +656,13 @@ class Node:
 
                     total_fortune_before = state[1] * self.capacities["L"] + state[2] * self.capacities["R"] + state[4] * self.target_max_on_chain_amount
                     total_fortune_after = next_state[1] * self.capacities["L"] + next_state[2] * self.capacities["R"] + next_state[4] * self.target_max_on_chain_amount
-                    reward = (total_fortune_after - total_fortune_before) / self.reward_normalizer
+                    # reward = (total_fortune_after - total_fortune_before) / self.reward_normalizer
+                    number_of_swaps_chosen_in_the_wrong_direction = \
+                        float((raw_action[0] > 0) and (self.A_hat_net_NL > 0)) + \
+                        float((raw_action[0] < 0) and (self.A_hat_net_NL < 0)) + \
+                        float((raw_action[1] > 0) and (self.A_hat_net_NR > 0)) + \
+                        float((raw_action[1] < 0) and (self.A_hat_net_NR < 0))
+                    reward = (total_fortune_after - total_fortune_before - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction) / self.reward_normalizer
 
 
                     self.steps_in_current_episode += 1
