@@ -121,48 +121,50 @@ def main():
     # SIMULATION PARAMETERS
     filename = 'results_102'
 
-    verbose = True
-    # verbose = False
+    # verbose = True
+    verbose = False
     verbose_also_print_transactions = False
+    # verbose_also_print_transactions = True
     num_of_experiments = 1
 
     base_fee = 0    # 4e-4
-    proportional_fee = 0.05 # 4e-5
+    # proportional_fee = 3e-5
+    proportional_fee = 0.01
     on_chain_budget = 1000
 
     # Channel N-L
     initial_balance_L = 500
     capacity_L = 1000
-    total_transactions_L_to_R = 20000
-    exp_mean_L_to_R = 2 / 1     # transactions per minute
+    total_transactions_L_to_R = 60000
+    exp_mean_L_to_R = 10 / 1     # transactions per minute
     # amount_distribution_L_to_R = "constant"
-    # amount_distribution_parameters_L_to_R = [10]                  # value of all transactions
-    amount_distribution_L_to_R = "uniform"
-    amount_distribution_parameters_L_to_R = [30]                # max_transaction_amount
-    # amount_distribution_L_to_R = "gaussian"
-    # amount_distribution_parameters_L_to_R = [150, 75, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
+    # amount_distribution_parameters_L_to_R = [30]                  # value of all transactions
+    # amount_distribution_L_to_R = "uniform"
+    # amount_distribution_parameters_L_to_R = [50]                # max_transaction_amount
+    amount_distribution_L_to_R = "gaussian"
+    amount_distribution_parameters_L_to_R = [100, 25, 20]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # Channel N-R
     initial_balance_R = 500
     capacity_R = 1000
-    total_transactions_R_to_L = 10000
-    exp_mean_R_to_L = 1 / 1     # transactions per minute
+    total_transactions_R_to_L = 15000
+    exp_mean_R_to_L = 2.5 / 1     # transactions per minute
     # amount_distribution_R_to_L = "constant"
-    # amount_distribution_parameters_R_to_L = [10]                   # value of all transactions
-    amount_distribution_R_to_L = "uniform"
-    amount_distribution_parameters_R_to_L = [30]                # max_transaction_amount
-    # amount_distribution_R_to_L = "gaussian"
-    # amount_distribution_parameters_R_to_L = [150, 75, 50]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
+    # amount_distribution_parameters_R_to_L = [30]                   # value of all transactions
+    # amount_distribution_R_to_L = "uniform"
+    # amount_distribution_parameters_R_to_L = [50]                # max_transaction_amount
+    amount_distribution_R_to_L = "gaussian"
+    amount_distribution_parameters_R_to_L = [100, 25, 20]       # max_transaction_amount, gaussian_mean, gaussian_variance. E.g.: [capacity, capacity / 2, capacity / 6]
 
     # REBALANCING
     # LSP parameters
     # server_min_swap_amount = 100
-    server_swap_fee = 0.05      # fraction of swap amount
+    server_swap_fee = 0.005      # fraction of swap amount
 
     # Node parameters
-    # rebalancing_policy = "none"
-    # rebalancing_policy = "autoloop"
-    rebalancing_policy = "loopmax"
+    # rebalancing_policy = "None"
+    # rebalancing_policy = "Autoloop"
+    rebalancing_policy = "Loopmax"
     # rebalancing_policy_parameters = [0.2, 0.8, server_min_swap_amount]  # [min % balance, max % balance, margin from target to launch]
     autoloop_lower_threshold = 0.3
     autoloop_upper_threshold = 0.7
@@ -226,8 +228,8 @@ def main():
     traj.f_explore(pypet.cartesian_product({
         # 'base_fee': [float(4*10**P) for P in list(range(-4, 2))],
         # 'base_fee': [40.0],
-        # 'proportional_fee': [float(10**P) for P in list(range(-6, 0))],
-        'proportional_fee': [1e-4, 1e-3, 0.01, 0.05, 0.1, 0.2],
+        # 'proportional_fee': [float(10**P) for P in list(range(-5, 0))],
+        # 'proportional_fee': [1e-5, 1e-4, 1e-3, 5e-3, 0.01, 0.02, 0.05, 0.1],        # <-----
         # 'proportional_fee': [0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.25],
         # 'proportional_fee': [0.01, 0.05, 0.1, 0.2, 0.25],
         # 'proportional_fee': [0.1],
@@ -237,10 +239,12 @@ def main():
         # 'rebalancing_policy': ['None', 'Autoloop', 'Loopmax'],
         'rebalancing_policy': ['None', 'Autoloop', 'Loopmax', 'RebEL'],
         # 'rebalancing_policy': ['RebEL'],
-        # 'rebalancing_policy': ['None', 'Autoloop', 'Autoloop-infrequent', 'Loopmax'],
+        # 'rebalancing_policy': ['Autoloop', 'RebEL'],
         # 'rebalancing_policy': ['Autoloop'],
         # 'rebalancing_policy': ['Loopmax'],
+        # 'rebalancing_policy': ['None'],
         # 'rebalancing_policy': ['Autoloop-infrequent'],
+        # 'rebalancing_policy': ['None', 'Autoloop', 'Autoloop-infrequent', 'Loopmax'],
         'seed': seeds[0:traj.num_of_experiments]
     }))
 
