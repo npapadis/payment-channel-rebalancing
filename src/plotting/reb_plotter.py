@@ -16,7 +16,7 @@ Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 # filename = 'results_01'
 # filename = 'results_02'
 # filename = 'results_03'
-filename = 'results_05'
+filename = 'results_212'
 
 # fee_studied = 'base_fee'
 fee_studied = 'proportional_fee'
@@ -49,7 +49,7 @@ result_values_min = result_values.min(axis=2)
 
 
 linestyles = ['solid', 'dashed', 'dashdot', 'dotted']
-plt.rcParams['axes.prop_cycle'] = cycler(color='bgrcmky')
+plt.rcParams['axes.prop_cycle'] = cycler(color='bgrkmcy')
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 plt.rcParams.update({'font.size': 15})
 plt.rcParams.update({"errorbar.capsize": 3})
@@ -61,22 +61,26 @@ for rebalancing_policy_index, rebalancing_policy in enumerate(par_rebalancing_po
     innermost_index = rebalancing_policy_index
     color = colors[innermost_index]
 
-    # Total throughput
-    ax1.plot(par_fee_values, result_values_average[:, rebalancing_policy_index], label=rebalancing_policy, linestyle=linestyles[0], marker=markers[innermost_index], color=color, alpha=1)
-    # yerr_total = [result_values_average[:, rebalancing_policy_index] - result_values_min[:, rebalancing_policy_index], result_values_max[:, rebalancing_policy_index] - result_values_average[:, rebalancing_policy_index]]
-    # ax1.errorbar(par_proportional_fee_values, result_values_average, yerr=yerr_total, fmt='none')
+    par_fee_values_percent = np.array(par_fee_values) * 100
+    ax1.plot(par_fee_values_percent, result_values_average[:, rebalancing_policy_index], label=rebalancing_policy, linestyle=linestyles[0], marker=markers[innermost_index], color=color, alpha=1)
+    yerr_total = [result_values_average[:, rebalancing_policy_index] - result_values_min[:, rebalancing_policy_index], result_values_max[:, rebalancing_policy_index] - result_values_average[:, rebalancing_policy_index]]
+    ax1.errorbar(par_fee_values_percent, result_values_average[:, rebalancing_policy_index], yerr=yerr_total, color=color, fmt='none')
 
     ax1.set_xscale('log')
     ax1.grid(True)
     # ax1.set_ylim(bottom=0)
-    ax1.set_xlabel(fee_studied + " value")
+    if fee_studied == "base_fee":
+        ax1.set_xlabel("Base relay fee ($)")
+    elif fee_studied == "proportional_fee":
+        ax1.set_xlabel("Proportional relay fee (%)")
     ax1.set_ylabel("Total final fortune ($)")
 
     # Total throughput legend
     lines, labels = ax1.get_legend_handles_labels()
     legend = ax1.legend(lines, labels, loc='best')
 
-    fig.savefig(save_at_directory + filename + "_" + result + ".png", bbox_inches='tight')
+    # fig.savefig(save_at_directory + filename + "_" + result + ".png", bbox_inches='tight')
+    fig.savefig(save_at_directory + filename + "_final_fortune_wrt_" + fee_studied + ".png", bbox_inches='tight')
     # fig.savefig(save_at_directory + filename + ".pdf", bbox_inches='tight')
 
     # legend_filename = filename + "_legend.png"
