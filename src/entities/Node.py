@@ -36,6 +36,12 @@ class Node:
         self.A_hat_net_NL = 0
         self.A_hat_net_NR = 0
         self.A_hat_net_RN = 0
+        self.S_hat_LR = 0
+        self.S_hat_RL = 0
+        self.S_hat_net_NL = 0
+        self.S_hat_net_LN = 0
+        self.S_hat_net_NR = 0
+        self.S_hat_net_RN = 0
         self.b_hat_LN_future_estimate = 0
         self.b_hat_RN_future_estimate = 0
         self.max_swap_in_amount_due_to_current_constraints = self.capacities
@@ -203,27 +209,14 @@ class Node:
         if self.rebalancing_parameters["rebalancing_policy"] == "None":
             return
 
-        # Updates estimates according to buffer
-        timespan_of_transactions_in_buffer = (self.latest_transactions[-1].time_of_arrival - self.latest_transactions[0].time_of_arrival) if len(self.latest_transactions) > 0 else np.Inf
-
-        # Estimations according to the buffer of amounts added to the respective balance per minute (unit time)
-        self.A_hat_net_NL = (
-                            sum([t.amount for t in self.latest_transactions if t.source == "L"]) - sum([t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "R"])
-                            ) / timespan_of_transactions_in_buffer
-        self.A_hat_net_LN = - self.A_hat_net_NL
-        self.A_hat_net_NR = (
-                            sum([t.amount for t in self.latest_transactions if t.source == "R"]) - sum([t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "L"])
-                            ) / timespan_of_transactions_in_buffer
-        self.A_hat_net_RN = - self.A_hat_net_NR
+        self.update_estimates()
+        # calculate_estimates_formula_3(self)
 
         if self.rebalancing_parameters["rebalancing_policy"] in ["Autoloop", "Loopmax"]:
             for neighbor in ["L", "R"]:
                 self.env.process(self.perform_rebalancing_if_needed_in_single_channel(neighbor=neighbor))
 
         elif self.rebalancing_parameters["rebalancing_policy"] == "RebEL":
-
-            self.b_hat_LN_future_estimate = max(0, min(self.remote_balances["L"] + self.A_hat_net_LN * self.rebalancing_parameters["T_conf"], self.capacities["L"])) if (self.steps_in_current_episode > 0) else 0
-            self.b_hat_RN_future_estimate = max(0, min(self.remote_balances["R"] + self.A_hat_net_RN * self.rebalancing_parameters["T_conf"], self.capacities["R"])) if (self.steps_in_current_episode > 0) else 0
 
             if self.episode_is_done:  # if episode is over, then perform reset to a balanced state
                 if self.verbose:
@@ -590,8 +583,9 @@ class Node:
                                 rebalance_request=rebalance_request_R)
                             )
 
-                    self.b_hat_LN_future_estimate = max(0, min(self.remote_balances["L"] + self.A_hat_net_LN*self.rebalancing_parameters["T_conf"], self.capacities["L"]))
-                    self.b_hat_RN_future_estimate = max(0, min(self.remote_balances["R"] + self.A_hat_net_RN*self.rebalancing_parameters["T_conf"], self.capacities["R"]))
+                    self.update_estimates()
+                    # calculate_estimates_formula_3(self)
+
                     # next_state = [
                     #     self.remote_balances["L"],
                     #     self.local_balances["L"],
@@ -800,7 +794,145 @@ class Node:
             if self.verbose:
                 print("Time {:.2f}: SWAP already in progress in channel N-{}.".format(self.env.now, neighbor))
 
-    def max_swap_in_amount(self, neighbor):
+    def update_estimates(self):
+        # Estimations of amounts added to the respective balance per minute (unit time)
+
+        # # Estimate #1 based on finite buffer only and arrived amounts
+        # timespan_of_transactions_in_buffer = (self.latest_transactions[-1].time_of_arrival - self.latest_transactions[0].time_of_arrival) if len(self.latest_transactions) > 1 else np.Inf
+        # self.A_hat_net_NL = (
+        #                         sum([t.amount for t in self.latest_transactions if t.source == "L"]) - sum(
+        #                         [t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "R"])
+        #                     ) / timespan_of_transactions_in_buffer
+        # self.A_hat_net_LN = - self.A_hat_net_NL
+        # self.A_hat_net_NR = (
+        #                         sum([t.amount for t in self.latest_transactions if t.source == "R"]) - sum(
+        #                         [t.amount - self.calculate_relay_fees(t.amount) for t in self.latest_transactions if t.source == "L"])
+        #                     ) / timespan_of_transactions_in_buffer
+        # self.A_hat_net_RN = - self.A_hat_net_NR
+        #
+        # if self.verbose:
+        #     print("Time {:.2f}: A_hat_net_LN = {:.2f}, A_hat_net_NL = {:.2f}, A_hat_net_NR = {:.2f}, A_hat_net_RN = {:.2f}".format(self.env.now, self.A_hat_net_LN, self.A_hat_net_NL, self.A_hat_net_NR, self.A_hat_net_RN))
+
+        # Estimate #2 based on all transactions that arrived since the simulation started
+        self.A_hat_net_NL = (self.total_amount_that_arrived_L_to_R - (self.total_amount_that_arrived_R_to_L - self.calculate_relay_fees(self.total_amount_that_arrived_R_to_L))) / self.env.now
+        self.A_hat_net_LN = - self.A_hat_net_NL
+        self.A_hat_net_NR = (self.total_amount_that_arrived_R_to_L - (self.total_amount_that_arrived_L_to_R - self.calculate_relay_fees(self.total_amount_that_arrived_L_to_R))) / self.env.now
+        self.A_hat_net_RN = - self.A_hat_net_NR
+
+        self.S_hat_LR = self.total_amount_that_succeeded_L_to_R / self.env.now
+        self.S_hat_RL = self.total_amount_that_succeeded_R_to_L / self.env.now
+        self.S_hat_net_NL = (self.total_amount_that_succeeded_L_to_R - (self.total_amount_that_succeeded_R_to_L - self.calculate_relay_fees(self.total_amount_that_succeeded_R_to_L))) / self.env.now   # amount added to b_NL over time due to successful txs
+        self.S_hat_net_LN = -self.S_hat_net_NL
+        self.S_hat_net_NR = (self.total_amount_that_succeeded_R_to_L - (self.total_amount_that_succeeded_L_to_R - self.calculate_relay_fees(self.total_amount_that_succeeded_L_to_R))) / self.env.now
+        self.S_hat_net_RN = - self.S_hat_net_NR
+
+        if self.verbose:
+            print("Time {:.2f}: A_hat_net_LN = {:.2f}, A_hat_net_NL = {:.2f}, A_hat_net_NR = {:.2f}, A_hat_net_RN = {:.2f}, S_hat_LR = {:.2f}, S_hat_RL = {:.2f}".format(self.env.now, self.A_hat_net_LN, self.A_hat_net_NL, self.A_hat_net_NR, self.A_hat_net_RN, self.S_hat_LR, self.S_hat_RL))
+
+        # self.b_hat_LN_future_estimate = max(0, min(self.remote_balances["L"] + self.A_hat_net_LN * self.rebalancing_parameters["T_conf"], self.capacities["L"]))
+        # self.b_hat_RN_future_estimate = max(0, min(self.remote_balances["R"] + self.A_hat_net_RN * self.rebalancing_parameters["T_conf"], self.capacities["R"]))
+        #
+        # if self.verbose:
+        #     print("Time {:.2f}: Estimate 1:".format(self.env.now))
+        #     print("Time {:.2f}: b_hat_LN_future_estimate = {:.2f}, b_hat_RN_future_estimate = {:.2f}".format(self.env.now, self.b_hat_LN_future_estimate, self.b_hat_RN_future_estimate))
+
+        # Estimate #3 based on total successful amounts since the simulation started, NOT adjusted for channel depletion
+
+        # self.b_hat_LN_future_estimate = max(0, min(self.remote_balances["L"] + ((self.S_hat_RL - self.calculate_relay_fees(self.S_hat_RL)) - self.S_hat_LR) * self.rebalancing_parameters["T_conf"], self.capacities["L"]))
+        # self.b_hat_RN_future_estimate = max(0, min(self.remote_balances["R"] + ((self.S_hat_LR - self.calculate_relay_fees(self.S_hat_LR)) - self.S_hat_RL) * self.rebalancing_parameters["T_conf"], self.capacities["R"]))
+        #
+        # if self.verbose:
+        #     print("Time {:.2f}: Estimate 2:".format(self.env.now))
+        #     print("Time {:.2f}: b_hat_LN_future_estimate = {:.2f}, b_hat_RN_future_estimate = {:.2f}".format(self.env.now, self.b_hat_LN_future_estimate, self.b_hat_RN_future_estimate))
+
+        # Estimate #4 based on total successful amounts since the simulation started, adjusted for channel depletion
+
+        S_hat_LR_clipped = self.S_hat_LR * min(self.rebalancing_parameters["T_conf"], self.remote_balances["L"] / self.S_hat_LR, self.local_balances["R"] / self.S_hat_LR) if self.S_hat_LR > 0 else 0
+        S_hat_RL_clipped = self.S_hat_RL * min(self.rebalancing_parameters["T_conf"], self.remote_balances["R"] / self.S_hat_RL, self.local_balances["L"] / self.S_hat_RL) if self.S_hat_RL > 0 else 0
+        self.b_hat_LN_future_estimate = max(0, min(
+            self.remote_balances["L"] - S_hat_LR_clipped + (S_hat_RL_clipped - self.calculate_relay_fees(S_hat_RL_clipped)),
+            self.capacities["L"])
+        )
+        self.b_hat_RN_future_estimate = max(0, min(
+            self.remote_balances["R"] - S_hat_RL_clipped + (S_hat_LR_clipped - self.calculate_relay_fees(S_hat_LR_clipped)),
+            self.capacities["R"])
+        )
+
+        if self.verbose:
+            print("Time {:.2f}: Estimate 4:".format(self.env.now))
+            print("Time {:.2f}: b_hat_LN_future_estimate = {:.2f}, b_hat_RN_future_estimate = {:.2f}".format(self.env.now, self.b_hat_LN_future_estimate, self.b_hat_RN_future_estimate))
+
+        # # Estimate #5 using mini-simulation of virtual transaction arrivals based on past successful amounts
+        #
+        # empirical_average_arriving_tx_size_LR = self.total_amount_that_arrived_L_to_R / self.total_number_of_txs_that_arrived_L_to_R
+        # empirical_average_arriving_tx_size_RL = self.total_amount_that_arrived_R_to_L / self.total_number_of_txs_that_arrived_R_to_L
+        # A_hat_LR = self.total_amount_that_arrived_L_to_R / self.env.now
+        # A_hat_RL = self.total_amount_that_arrived_R_to_L / self.env.now
+        # total_est_arriving_amount_LR_in_check_interval = A_hat_LR * self.rebalancing_parameters["check_interval"]
+        # total_est_arriving_amount_RL_in_check_interval = A_hat_RL * self.rebalancing_parameters["check_interval"]
+        #
+        # split_A_hat_LR_number_of_txs = int(total_est_arriving_amount_LR_in_check_interval / empirical_average_arriving_tx_size_LR) + 1
+        # leftover_amount_LR = total_est_arriving_amount_LR_in_check_interval - split_A_hat_LR_number_of_txs * empirical_average_arriving_tx_size_LR
+        # split_A_hat_LR_amounts_of_each = list(np.ones(split_A_hat_LR_number_of_txs,) * empirical_average_arriving_tx_size_LR)
+        # split_A_hat_LR_amounts_of_each.append(leftover_amount_LR)
+        # split_A_hat_RL_number_of_txs = int(total_est_arriving_amount_RL_in_check_interval / empirical_average_arriving_tx_size_RL) + 1
+        # leftover_amount_RL = total_est_arriving_amount_RL_in_check_interval - split_A_hat_RL_number_of_txs * empirical_average_arriving_tx_size_RL
+        # split_A_hat_RL_amounts_of_each = list(np.ones(split_A_hat_RL_number_of_txs,) * empirical_average_arriving_tx_size_RL)
+        # split_A_hat_RL_amounts_of_each.append(leftover_amount_RL)
+        #
+        # # split_S_hat_LR_number_of_txs = self.S_hat_LR / self.empirical_average_tx_size_LR
+        # # split_S_hat_LR_amount_of_each = self.empirical_average_tx_size_LR
+        # # split_S_hat_RL_number_of_txs = self.S_hat_RL / self.empirical_average_tx_size_RL
+        # # split_S_hat_RL_amount_of_each = self.empirical_average_tx_size_RL
+        #
+        # est_local_balances = copy.deepcopy(self.local_balances)
+        # est_remote_balances = copy.deepcopy(self.remote_balances)
+        #
+        # for i in range(max(split_A_hat_LR_number_of_txs, split_A_hat_RL_number_of_txs)):
+        #     if i < split_A_hat_LR_number_of_txs:
+        #         # Process an L-to-R virtual transaction
+        #         tx_amount = split_A_hat_LR_amounts_of_each[i]
+        #         tx_relay_fees = self.calculate_relay_fees(tx_amount)
+        #         previous_node = "L"
+        #         next_node = "R"
+        #
+        #         if (tx_amount >= tx_relay_fees) and (tx_amount <= est_remote_balances[previous_node]) and (tx_amount - tx_relay_fees <= est_local_balances[next_node]):
+        #             # Execute virtual transaction
+        #             est_local_balances[previous_node] += tx_amount
+        #             est_remote_balances[previous_node] -= tx_amount
+        #             est_local_balances[next_node] -= (tx_amount - tx_relay_fees)
+        #             est_remote_balances[next_node] += (tx_amount - tx_relay_fees)
+        #         else:
+        #             # Reject virtual transaction
+        #             pass
+        #
+        #     if i < split_A_hat_RL_number_of_txs:
+        #         # Process an R-to-L virtual transaction
+        #         tx_amount = split_A_hat_RL_amounts_of_each[i]
+        #         tx_relay_fees = self.calculate_relay_fees(tx_amount)
+        #         previous_node = "R"
+        #         next_node = "L"
+        #
+        #         if (tx_amount >= tx_relay_fees) and (tx_amount <= est_remote_balances[previous_node]) and (tx_amount - tx_relay_fees <= est_local_balances[next_node]):
+        #             est_local_balances[previous_node] += tx_amount
+        #             est_remote_balances[previous_node] -= tx_amount
+        #             est_local_balances[next_node] -= (tx_amount - tx_relay_fees)
+        #             est_remote_balances[next_node] += (tx_amount - tx_relay_fees)
+        #         else:
+        #             # Reject virtual transaction
+        #             pass
+        #
+        # self.b_hat_LN_future_estimate = est_remote_balances["L"]
+        # self.b_hat_RN_future_estimate = est_remote_balances["R"]
+        #
+        # if self.verbose:
+        #     print("Time {:.2f}: Estimate 5:".format(self.env.now))
+        #     print("Time {:.2f}: b_hat_LN_future_estimate = {:.2f}, b_hat_RN_future_estimate = {:.2f}".format(self.env.now, self.b_hat_LN_future_estimate, self.b_hat_RN_future_estimate))
+
+
+
+    # def max_swap_in_amount_allowed_by_on_chain_balance(self, neighbor):
+    def max_swap_in_amount_allowed_by_on_chain_balance(self):
         # return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.capacities[neighbor])
         return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.remote_balances[neighbor])
 
