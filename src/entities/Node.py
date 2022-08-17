@@ -260,7 +260,7 @@ class Node:
                     self.env.process(self.perform_rebalancing_if_needed_in_single_channel(neighbor=neighbor, reset=True))
 
                 self.steps_in_current_episode = 0
-                self.episode_is_done = False    # Did not use this variable as a flag inside the two parallel calls of the perform_rebalancing_if_needed_in_single_channel() function because of concurrency
+                self.episode_is_done = False    # We did not use this variable as a flag inside the two parallel calls of the perform_rebalancing_if_needed_in_single_channel() function to avoid concurrency issues
 
             else:   # perform regular action as given by the learned policy
 
@@ -321,7 +321,7 @@ class Node:
                         state[4] * self.target_max_on_chain_amount,
                         state[5] * self.capacities["L"],
                         state[6] * self.capacities["R"]
-                    ]
+                    ]       # could also just be taken from the simulator instead
 
                     self.max_swap_in_amount_due_to_current_constraints = {
                         "L": min(state[5] * self.capacities["L"], self.phi_inverse(state[4] * self.target_max_on_chain_amount), self.capacities["L"]),
