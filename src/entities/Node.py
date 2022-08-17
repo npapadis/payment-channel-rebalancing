@@ -613,6 +613,7 @@ class Node:
                         next_state[6] * self.capacities["R"]
                     ]
 
+                    # Reward 1
                     # reward = - ( self.fee_losses_since_last_check_time
                     #     +
                     #     (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 0) +
@@ -621,6 +622,7 @@ class Node:
                     #     self.calculate_swap_out_fees(r_R_out)
                     # )
                     [r_L_in, r_L_out, r_R_in, r_R_out] = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)
+                    # Reward 2
                     # reward = - (self.fee_losses_since_last_check_time
                     #             +
                     #             # (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 0) +
@@ -635,12 +637,16 @@ class Node:
                     #             (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
                     #             )
                     # TODO: save rewards and respective times
+
+                    # Reward 3
                     # reward = - (self.fee_losses_since_last_check_time / (max(self.capacities["L"], self.capacities["R"])) +
                     #             (self.calculate_swap_in_fees(r_L_in) / self.capacities["L"] if ("L" in self.swap_in_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in) / self.capacities["L"]) +
                     #             (self.calculate_swap_out_fees(r_L_out) / self.capacities["L"] if ("L" in self.swap_out_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out) / self.capacities["L"]) +
                     #             (self.calculate_swap_in_fees(r_R_in) / self.capacities["R"] if "R" in self.swap_in_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in) / self.capacities["R"]) +
                     #             (self.calculate_swap_out_fees(r_R_out) / self.capacities["R"] if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out) / self.capacities["R"])
                     #             )
+
+                    # Reward 4
                     # reward = - (self.fee_losses_since_last_check_time +
                     #             (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in)) +
                     #             (self.calculate_swap_out_fees(r_L_out) if ("L" in self.swap_out_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out)) +
@@ -650,13 +656,149 @@ class Node:
 
                     total_fortune_before = state[1] * self.capacities["L"] + state[2] * self.capacities["R"] + state[4] * self.target_max_on_chain_amount
                     total_fortune_after = next_state[1] * self.capacities["L"] + next_state[2] * self.capacities["R"] + next_state[4] * self.target_max_on_chain_amount
+
+                    # Reward 5
                     # reward = (total_fortune_after - total_fortune_before) / self.reward_normalizer
+
+                    # Counting A
+                    # number_of_swaps_chosen_in_the_wrong_direction = \
+                    #     float((self.A_hat_net_NL > 0) and (raw_action[0] > 0)) + \
+                    #     float((self.A_hat_net_NL < 0) and (raw_action[0] < 0)) + \
+                    #     float((self.A_hat_net_NR > 0) and (raw_action[1] > 0)) + \
+                    #     float((self.A_hat_net_NR < 0) and (raw_action[1] < 0))
+                    # number_of_swaps_chosen_in_the_correct_direction = \
+                    #     float((self.A_hat_net_NL < 0) and (raw_action[0] > 0)) + \
+                    #     float((self.A_hat_net_NL > 0) and (raw_action[0] < 0)) + \
+                    #     float((self.A_hat_net_NR < 0) and (raw_action[1] > 0)) + \
+                    #     float((self.A_hat_net_NR > 0) and (raw_action[1] < 0))
+
+                    # Counting B
+                    # number_of_swaps_chosen_in_the_wrong_direction = \
+                    #     float((self.S_hat_net_NL > 0) and (raw_action[0] > 0)) + \
+                    #     float((self.S_hat_net_NL < 0) and (raw_action[0] < 0)) + \
+                    #     float((self.S_hat_net_NR > 0) and (raw_action[1] > 0)) + \
+                    #     float((self.S_hat_net_NR < 0) and (raw_action[1] < 0))
+                    # number_of_swaps_chosen_in_the_correct_direction = \
+                    #     float((self.S_hat_net_NL < 0) and (raw_action[0] > 0)) + \
+                    #     float((self.S_hat_net_NL > 0) and (raw_action[0] < 0)) + \
+                    #     float((self.S_hat_net_NR < 0) and (raw_action[1] > 0)) + \
+                    #     float((self.S_hat_net_NR > 0) and (raw_action[1] < 0))
+
+                    # Counting C
                     number_of_swaps_chosen_in_the_wrong_direction = \
-                        float((raw_action[0] > 0) and (self.A_hat_net_NL > 0)) + \
-                        float((raw_action[0] < 0) and (self.A_hat_net_NL < 0)) + \
-                        float((raw_action[1] > 0) and (self.A_hat_net_NR > 0)) + \
-                        float((raw_action[1] < 0) and (self.A_hat_net_NR < 0))
-                    reward = (total_fortune_after - total_fortune_before - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction) / self.reward_normalizer
+                        float((self.S_hat_net_NL > 0) and (raw_action[0] > 0) and (processed_action_absolute["L"] > 0.0)) + \
+                        float((self.S_hat_net_NL < 0) and (raw_action[0] < 0) and (processed_action_absolute["L"] > 0.0)) + \
+                        float((self.S_hat_net_NR > 0) and (raw_action[1] > 0) and (processed_action_absolute["R"] > 0.0)) + \
+                        float((self.S_hat_net_NR < 0) and (raw_action[1] < 0) and (processed_action_absolute["R"] > 0.0))
+                    number_of_swaps_chosen_in_the_correct_direction = \
+                        float((self.S_hat_net_NL < 0) and ((raw_action[0] > 0) or ((raw_action[0] < 0) and (processed_action_absolute["L"] == 0.0)))) + \
+                        float((self.S_hat_net_NL > 0) and ((raw_action[0] < 0) or ((raw_action[0] > 0) and (processed_action_absolute["L"] == 0.0)))) + \
+                        float((self.S_hat_net_NR < 0) and ((raw_action[1] > 0) or ((raw_action[0] < 0) and (processed_action_absolute["R"] == 0.0)))) + \
+                        float((self.S_hat_net_NR > 0) and ((raw_action[1] < 0) or ((raw_action[0] > 0) and (processed_action_absolute["R"] == 0.0))))
+
+
+                    number_of_zero_swaps = float(processed_action_absolute["L"] == 0.0) + float(processed_action_absolute["R"] == 0.0)
+
+                    # Reward 6
+                    # reward = (total_fortune_after - total_fortune_before
+                    #           - self.fee_losses_since_last_check_time
+                    #           + self.fee_profits_since_last_check_time * (0 if self.total_steps < 120 else 3)
+                    #           + self.learning_parameters.bonus_for_swap_in_correct_direction * number_of_swaps_chosen_in_the_correct_direction * (1 if self.total_steps < 120 else 1/5)
+                    #           - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction * (1 if self.total_steps < 120 else 1/5)
+                    #           ) #/ (self.reward_normalizer)
+
+                    # reward = (total_fortune_after - total_fortune_before
+                    #           - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction
+                    #           ) / self.reward_normalizer
+
+                    # Reward 7
+                    reward = (total_fortune_after - total_fortune_before
+                              - self.fee_losses_since_last_check_time
+                                - (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in)) +
+                                - (self.calculate_swap_out_fees(r_L_out) if ("L" in self.swap_out_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out)) +
+                                - (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in)) +
+                                - (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
+                              + self.learning_parameters.bonus_for_zero_action * number_of_zero_swaps
+                              + self.learning_parameters.bonus_for_swap_in_correct_direction * number_of_swaps_chosen_in_the_correct_direction
+                              - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction
+                              ) #/ (self.reward_normalizer)
+
+                    # Reward 8
+                    # reward = (total_fortune_after - total_fortune_before
+                    #           - self.fee_losses_since_last_check_time
+                    #           + self.learning_parameters.zero_action_bonus * number_of_zero_swaps
+                    #           + self.learning_parameters.bonus_for_swap_in_correct_direction * number_of_swaps_chosen_in_the_correct_direction
+                    #           - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction
+                    #           - self.initial_fortune)# / (self.reward_normalizer)
+
+                    # # Reward 9a
+                    # # self.target_fortune = 100* self.initial_fortune
+                    # self.target_fortune_increase = 10000
+                    # reward = (total_fortune_after - total_fortune_before
+                    #           - self.fee_losses_since_last_check_time
+                    #           + self.learning_parameters.bonus_for_zero_action * number_of_zero_swaps
+                    #           + self.learning_parameters.bonus_for_swap_in_correct_direction * number_of_swaps_chosen_in_the_correct_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #           - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #           #) / (self.reward_normalizer)
+                    #           # - self.target_fortune) / self.initial_fortune
+                    #           - self.target_fortune_increase)#*1000 / self.initial_fortune
+
+
+                    # Reward 9b
+                    # # self.target_fortune = 100* self.initial_fortune
+                    # self.target_fortune_increase = 1000
+                    # reward =          (self.fee_profits_since_last_check_time * 100
+                    #           - (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else self.learning_parameters.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in))
+                    #           - (self.calculate_swap_out_fees(r_L_out) if ("L" in self.swap_out_successful_in_channel) else self.learning_parameters.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out))
+                    #           - (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else self.learning_parameters.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in))
+                    #           - (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else self.learning_parameters.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
+                    #           - self.fee_losses_since_last_check_time
+                    #           + self.learning_parameters.bonus_for_zero_action * number_of_zero_swaps
+                    #           + self.learning_parameters.bonus_for_swap_in_correct_direction * number_of_swaps_chosen_in_the_correct_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #           - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #           #) / (self.reward_normalizer)
+                    #           # - self.target_fortune) / self.initial_fortune
+                    #           - self.target_fortune_increase
+                    #           )#*100#0 / self.initial_fortune
+
+
+
+
+
+                    # Reward 10 (rate)
+                    # self.target_fortune_increase_rate = 1    #50 * self.initial_fortune - self.initial_fortune
+                    # reward = (((total_fortune_after - total_fortune_before
+                    #           - self.fee_losses_since_last_check_time
+                    #           #) / (self.reward_normalizer)
+                    #           ) / total_fortune_before - self.target_fortune_increase_rate)
+                    #           + self.learning_parameters.bonus_for_zero_action * number_of_zero_swaps
+                    #         + self.learning_parameters.bonus_for_swap_in_correct_direction * number_of_swaps_chosen_in_the_correct_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #         - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #         )
+
+                    # Reward 0
+                    # reward = np.random.randint(-1000, 10)
+                    # reward = np.random.randint(0, 1)
+                    # reward = 0
+
+                    # Reward 11
+                    # reward = (self.fee_profits_since_last_check_time * min(self.capacities["L"], self.capacities["R"]) \
+                    #             - self.fee_losses_since_last_check_time * min(self.capacities["L"], self.capacities["R"]) \
+                    #             - (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 0) * self.capacities["L"] - \
+                    #             self.calculate_swap_out_fees(r_L_out) - \
+                    #             (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 0) * self.capacities["R"] - \
+                    #             self.calculate_swap_out_fees(r_R_out)
+                    #           ) / self.initial_fortune*100
+
+                    # Reward 12
+                    # reward = (self.fee_profits_since_last_check_time
+                    #             - self.fee_losses_since_last_check_time
+                    #             - (self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_L_in)) +
+                    #             - (self.calculate_swap_out_fees(r_L_out) if ("L" in self.swap_out_successful_in_channel) else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_L_out)) +
+                    #             - (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_in_fees(r_R_in)) +
+                    #             - (self.calculate_swap_out_fees(r_R_out) if "R" in self.swap_out_successful_in_channel else self.swap_failure_penalty_coefficient * self.calculate_swap_out_fees(r_R_out))
+                    #             - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction
+                    #           ) / self.reward_normalizer
 
 
                     self.steps_in_current_episode += 1
@@ -667,6 +809,32 @@ class Node:
                     self.swap_out_successful_in_channel = []
 
                     mask = float(not self.episode_is_done)
+
+
+                    # # Reward 13 (reward of an action dependending on two check_intervals and not only one
+                    # time_to_wait = 2*self.rebalancing_parameters["check_interval"] - self.rebalancing_parameters["T_conf"]-0.001
+                    # yield self.env.timeout(time_to_wait)
+                    #
+                    # fees_of_last_two_check_interval_successes = sum(self.calculate_relay_fees(t.amount) for t in self.latest_two_T_check_transactions if (t.time_of_arrival >= self.env.now - rebalancing_start_time) and (t.status == 'SUCCEEDED'))
+                    # fees_of_last_two_check_interval_losses = sum(self.calculate_relay_fees(t.amount) for t in self.latest_two_T_check_transactions if (t.time_of_arrival >= self.env.now - rebalancing_start_time) and (t.status == 'FAILED'))
+                    #
+                    # self.target_fortune_increase = 10000
+                    # reward = ((self.calculate_swap_in_fees(r_L_in) if ("L" in self.swap_in_successful_in_channel) else 0) +
+                    #           self.calculate_swap_out_fees(r_L_out) +
+                    #           (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 0) +
+                    #           self.calculate_swap_out_fees(r_R_out)
+                    #           + fees_of_last_two_check_interval_successes
+                    #           - fees_of_last_two_check_interval_losses
+                    #           + self.learning_parameters.bonus_for_zero_action * number_of_zero_swaps
+                    #           + self.learning_parameters.bonus_for_swap_in_correct_direction * number_of_swaps_chosen_in_the_correct_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #           - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction  # * (1 if self.total_steps < 120 else 1/5)
+                    #           #) / (self.reward_normalizer)
+                    #           # - self.target_fortune) / self.initial_fortune
+                    #           - self.target_fortune_increase)#*1000 / self.initial_fortune
+
+                    # self.fee_losses_since_two_check_times_ago = self.fee_losses_since_last_check_time
+                    # self.fee_profits_since_two_check_times_ago = self.fee_profits_since_last_check_time
+
                     # self.replay_memory.push(state, processed_action, reward, next_state, mask)  # Append transition to memory
                     self.replay_memory.push(state, raw_action, reward, next_state, mask)  # Append transition to memory
 
