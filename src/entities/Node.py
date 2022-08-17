@@ -147,9 +147,13 @@ class Node:
         if swap_out_amount <= 0:
             swap_out_fees = 0
         else:
-            net_amount_to_be_added_on_chain = (swap_out_amount - self.rebalancing_parameters["miner_fee"]) / (1 + self.rebalancing_parameters["server_swap_fee"])
+            net_amount_to_be_added_on_chain = self.phi_inverse(swap_out_amount)
             swap_out_fees = net_amount_to_be_added_on_chain * self.rebalancing_parameters["server_swap_fee"] + self.rebalancing_parameters["miner_fee"]
         return swap_out_fees
+
+    def phi_inverse(self, gross_amount):
+        net_amount = (gross_amount - self.rebalancing_parameters["miner_fee"]) / (1 + self.rebalancing_parameters["server_swap_fee"])
+        return net_amount
 
     def execute_feasible_transaction(self, t):
         # Calling this function requires checking for transaction feasibility beforehand. The function itself does not perform any checks, and this could lead to negative balances if misused.
@@ -292,8 +296,8 @@ class Node:
                     ]
 
                     self.max_swap_in_amount_due_to_current_constraints = {
-                        "L": min(state[5] * self.capacities["L"], state[4] * self.target_max_on_chain_amount, self.capacities["L"]),
-                        "R": min(state[6] * self.capacities["R"], state[4] * self.target_max_on_chain_amount, self.capacities["R"])
+                        "L": min(state[5] * self.capacities["L"], self.phi_inverse(state[4] * self.target_max_on_chain_amount), self.capacities["L"]),
+                        "R": min(state[6] * self.capacities["R"], self.phi_inverse(state[4] * self.target_max_on_chain_amount), self.capacities["R"])
                     }
                     self.max_swap_out_amount_due_to_current_constraints = {
                         "L": state[1] * self.capacities["L"],
@@ -745,16 +749,16 @@ class Node:
                 #             print("Time {:.2f}: SWAP not needed in channel N-{}.". format(self.env.now, neighbor))
 
                 elif self.rebalancing_parameters["rebalancing_policy"] == "Loopmax":
-                    other_neighbor = "R" if neighbor == "L" else "L"
-
                     net_rate_of_local_balance_change = {"L": self.A_hat_net_NL, "R": self.A_hat_net_NR}
 
                     if net_rate_of_local_balance_change[neighbor] < 0:  # SWAP-IN
                         expected_time_to_depletion = self.local_balances[neighbor] / (- net_rate_of_local_balance_change[neighbor])
                         if expected_time_to_depletion - self.rebalancing_parameters["check_interval"] < self.rebalancing_parameters["T_conf"]:
                             safety_margin_in_coins = - net_rate_of_local_balance_change[neighbor] * self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
-                            swap_amount = self.max_swap_in_amount(neighbor) - safety_margin_in_coins
                             # swap_amount = self.max_swap_in_amount(neighbor)
+                            # swap_amount = self.max_swap_in_amount(neighbor) - safety_margin_in_coins
+                            # swap_amount = min(self.max_swap_in_amount_allowed_by_on_chain_balance(), self.remote_balances[neighbor]) - safety_margin_in_coins
+                            swap_amount = min(self.phi_inverse(self.on_chain_budget), self.remote_balances[neighbor]) - safety_margin_in_coins
                             yield self.env.process(self.swap_in(neighbor, swap_amount, rebalance_request))
                         else:
                             pass
@@ -934,7 +938,8 @@ class Node:
     # def max_swap_in_amount_allowed_by_on_chain_balance(self, neighbor):
     def max_swap_in_amount_allowed_by_on_chain_balance(self):
         # return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.capacities[neighbor])
-        return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.remote_balances[neighbor])
+        # return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.remote_balances[neighbor])
+        return (self.on_chain_budget - self.rebalancing_parameters["miner_fee"]) / (1 + self.rebalancing_parameters["server_swap_fee"])
 
     def swap_in(self, neighbor, swap_amount, rebalance_request):
         # swap_amount is the net amount that is moving IN THE CHANNEL: it DOES NOT include the fees
