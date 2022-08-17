@@ -184,24 +184,25 @@ class LearningParameters:   # args in original code's main.py
         self.gamma = 0.99                           # Discount factor for reward
         self.tau = 0.005                            # Target smoothing coefficient (τ)
         self.lr = 0.0003                            # Learning rate
-        self.alpha = 0.02                            # Temperature parameter α determines the relative importance of the entropy term against the reward
+        self.alpha = 0.05                           # Temperature parameter α determines the relative importance of the entropy term against the reward
         self.automatic_entropy_tuning = False       # Automatically adjust α
         self.seed = 123456                          # Random seed
-        self.batch_size = 1                         # Batch size
+        self.batch_size = 10                        # Batch size
         # self.num_steps =                          # Maximum number of steps   ---> not needed, as simulator terminates based on time
         self.hidden_size = 256                      # Hidden size
         self.updates_per_step = 1                   # Model updates per simulator step
         self.start_steps = 10                       # Number of steps in the beginning for which we sample random actions and not from the learned distribution
         self.target_update_interval = 1             # Value target update per number of updates per step
-        self.replay_size = 100                      # Size of replay buffer
+        self.replay_size = 100000                   # Size of replay buffer
         self.cuda = False                           # Run on CUDA
 
         self.nn_update_interval = 1
 
-        self.on_chain_normalization_multiplier = 30
-        self.episode_duration = 99
+        self.on_chain_normalization_multiplier = 60
+        self.episode_duration = 1000000000000000
         self.target_local_balance_fractions_at_state_reset = {"L": 0.5, "R": 0.5}   # times the capacity of each channel
-        # self.target_local_balance_fractions_at_state_reset = {"L": 0.0, "R": 1.0}   # times the capacity of each channel
-        self.min_swap_threshold_as_percentage_of_capacity = 0.3
-        self.swap_failure_penalty_coefficient = 20
+        self.min_swap_threshold_as_percentage_of_capacity = 0.2
+        self.swap_failure_penalty_coefficient = 0
         self.penalty_for_swap_in_wrong_direction = 0
+        self.bonus_for_swap_in_correct_direction = 0
+        self.bonus_for_zero_action = 0
