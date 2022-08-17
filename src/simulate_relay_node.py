@@ -90,6 +90,7 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
 
     verbose = experiment_parameters["verbose"]
     verbose_also_print_transactions = experiment_parameters["verbose_also_print_transactions"]
+    filename = experiment_parameters["filename"]
     seed = experiment_parameters["seed"]
 
     # if amount_distribution_L_to_R == "empirical_from_csv_file":
@@ -113,7 +114,7 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
 
     # N = Node(env, node_parameters, rebalancing_parameters, demand_estimates, verbose)
     # N = Node(env, node_parameters, rebalancing_parameters, verbose)
-    N = Node(env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions)
+    N = Node(env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions, filename)
     env.process(N.run())
 
     topology = {"N": N}

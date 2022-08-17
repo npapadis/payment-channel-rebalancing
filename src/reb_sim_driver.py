@@ -47,6 +47,7 @@ def pypet_wrapper(traj):
         "amount_distribution_parameters_R_to_L": traj.amount_distribution_parameters_R_to_L,
         "verbose": traj.verbose,
         "verbose_also_print_transactions": traj.verbose_also_print_transactions,
+        "filename": traj.filename,
         "seed": traj.seed
     }
 
@@ -117,15 +118,8 @@ def pypet_wrapper(traj):
 
 
 def main():
-    # Create the environment
-    env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
-                            filename='outputs/results/results_05.hdf5',
-                            log_stdout=True,
-                            overwrite_file=True)
-    traj = env.traj
-    # EMPIRICAL_DATA_FILEPATH = "./creditcard-non-fraudulent-only-amounts-only.csv"
-
     # SIMULATION PARAMETERS
+    filename = 'results_102'
 
     verbose = True
     # verbose = False
@@ -181,6 +175,13 @@ def main():
     safety_margin_in_minutes_L = T_conf/5
     safety_margin_in_minutes_R = T_conf/5
 
+    # Create the environment
+    env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
+                            filename='outputs/results/' + filename + '.hdf5',
+                            log_stdout=True,
+                            overwrite_file=True)
+    traj = env.traj
+
     # Encode parameters for pypet
 
     traj.f_add_parameter('initial_balance_L', initial_balance_L, comment='Initial balance of node N in channel with node L')
@@ -216,6 +217,7 @@ def main():
     # traj.f_add_parameter('verbose', verbose, comment='Verbose output')
     traj.f_add_parameter('verbose', verbose, comment='Verbose output at rebalancing check times')
     traj.f_add_parameter('verbose_also_print_transactions', verbose_also_print_transactions, comment='Verbose output for all transactions apart from rebalancing check times')
+    traj.f_add_parameter('filename', filename, comment='Filename of the results')
     traj.f_add_parameter('num_of_experiments', num_of_experiments, comment='Repetitions of every experiment')
     traj.f_add_parameter('seed', 0, comment='Randomness seed')
 

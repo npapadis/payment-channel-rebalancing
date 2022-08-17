@@ -14,7 +14,7 @@ from src.utils.MDP_utils import *
 class Node:
     # def __init__(self, env, node_parameters, rebalancing_parameters, demand_estimates, verbose):
     # def __init__(self, env, node_parameters, rebalancing_parameters, verbose):
-    def __init__(self, env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions):
+    def __init__(self, env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions, filename):
         self.env = env
         self.local_balances = {"L": node_parameters["initial_balance_L"], "R": node_parameters["initial_balance_R"]}
         self.remote_balances = {"L": node_parameters["capacity_L"] - node_parameters["initial_balance_L"], "R": node_parameters["capacity_R"] - node_parameters["initial_balance_R"]}
@@ -95,7 +95,7 @@ class Node:
             )
             self.update_count = 0
             self.reward_normalizer = self.initial_fortune / 1000
-            self.writer = SummaryWriter('../runs/{}_SAC_{}'.format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), "autotune" if self.learning_parameters.automatic_entropy_tuning else "")) # Tensorboard setup
+            self.writer = SummaryWriter('./outputs/runs/{}_{}_SAC_{}'.format(filename, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), "autotune" if self.learning_parameters.automatic_entropy_tuning else ""))    # Tensorboard setup
             self.min_swap_threshold_as_percentage_of_capacity = self.learning_parameters.min_swap_threshold_as_percentage_of_capacity
             self.swap_failure_penalty_coefficient = self.learning_parameters.swap_failure_penalty_coefficient
             self.steps_in_current_episode = 0
