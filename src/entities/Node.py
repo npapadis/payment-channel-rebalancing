@@ -32,6 +32,13 @@ class Node:
         self.verbose_also_print_transactions = verbose_also_print_transactions
         self.latest_transactions_buffer_size = 100
         self.latest_transactions = []
+        self.latest_two_T_check_transactions = []
+        self.total_amount_that_arrived_L_to_R = 0
+        self.total_amount_that_arrived_R_to_L = 0
+        self.total_number_of_txs_that_arrived_L_to_R = 0
+        self.total_number_of_txs_that_arrived_R_to_L = 0
+        self.total_amount_that_succeeded_L_to_R = 0
+        self.total_amount_that_succeeded_R_to_L = 0
         self.A_hat_net_LN = 0
         self.A_hat_net_NL = 0
         self.A_hat_net_NR = 0
@@ -108,6 +115,9 @@ class Node:
         self.swap_in_successful_in_channel = []
         self.swap_out_successful_in_channel = []
         self.fee_losses_since_last_check_time = 0
+        # self.fee_losses_since_two_check_times_ago = 0
+        self.fee_profits_since_last_check_time = 0
+        # self.fee_profits_since_two_check_times_ago = 0
         self.check_time_index = 0
 
         self.balance_history_times = []
@@ -183,18 +193,34 @@ class Node:
             self.latest_transactions.pop(0)
         self.latest_transactions.append(t)
 
+        # Buffer of transactions of last two check times used for Reward 13
+        # self.latest_two_T_check_transactions.append(t)
+        # # Prune old ones
+        # i = 0
+        # while self.latest_two_T_check_transactions[i].time_of_arrival < self.env.now - 2*self.rebalancing_parameters["check_interval"]:
+        #     i += 1
+        # self.latest_two_T_check_transactions[0:i] = []
+
+        tx_relay_fees = self.calculate_relay_fees(t.amount)
+
         # If feasible, execute; otherwise, reject
-        if (t.amount >= self.calculate_relay_fees(t.amount)) and (t.amount <= self.remote_balances[t.previous_node]) and (t.amount - self.calculate_relay_fees(t.amount) <= self.local_balances[t.next_node]) and self.node_is_accepting_transactions:
+        if (t.amount >= tx_relay_fees) and (t.amount <= self.remote_balances[t.previous_node]) and (t.amount - tx_relay_fees <= self.local_balances[t.next_node]) and self.node_is_accepting_transactions:
             self.execute_feasible_transaction(t)
             fee_losses_of_this_transaction = 0.0
+            self.total_amount_that_succeeded_L_to_R += t.amount if t.source == "L" and t.destination == "R" else 0
+            self.total_amount_that_succeeded_R_to_L += t.amount if t.source == "R" and t.destination == "L" else 0
         else:
             self.reject_transaction(t)
-            fee_losses_of_this_transaction = self.calculate_relay_fees(t.amount)
+            fee_losses_of_this_transaction = tx_relay_fees
         # t.cleared.succeed()
         self.time_to_check.succeed()
         self.time_to_check = self.env.event()
 
         # Update logs and metrics
+        self.total_amount_that_arrived_L_to_R += t.amount if t.source == "L" and t.destination == "R" else 0
+        self.total_amount_that_arrived_R_to_L += t.amount if t.source == "R" and t.destination == "L" else 0
+        self.total_number_of_txs_that_arrived_L_to_R += 1 if t.source == "L" and t.destination == "R" else 0
+        self.total_number_of_txs_that_arrived_R_to_L += 1 if t.source == "R" and t.destination == "L" else 0
         self.total_fortune_including_pending_swaps_times.append(self.env.now)
         total_fortune_including_pending_swaps = self.local_balances["L"] + self.local_balances["R"] + self.on_chain_budget + self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"] + self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]
         total_fortune_including_pending_swaps_minus_losses = total_fortune_including_pending_swaps - self.cumulative_fee_losses
@@ -202,6 +228,7 @@ class Node:
         self.total_fortune_including_pending_swaps_minus_losses_values.append(total_fortune_including_pending_swaps_minus_losses)
         self.fee_losses_over_time.append(fee_losses_of_this_transaction)
         self.fee_losses_since_last_check_time += fee_losses_of_this_transaction
+        self.fee_profits_since_last_check_time += tx_relay_fees - fee_losses_of_this_transaction
         self.cumulative_fee_losses += fee_losses_of_this_transaction
         self.rebalancing_fees_over_time.append(self.rebalancing_fees_since_last_transaction)    # We register rebalancing fees only when the next transaction arrives, and not at the actual time the rebalancing starts.
         self.cumulative_rebalancing_fees += self.rebalancing_fees_since_last_transaction
@@ -665,8 +692,8 @@ class Node:
 
                     self.steps_in_current_episode += 1
                     self.episode_is_done = self.steps_in_current_episode >= self.learning_parameters.episode_duration
-
                     self.fee_losses_since_last_check_time = 0
+                    self.fee_profits_since_last_check_time = 0
                     self.swap_in_successful_in_channel = []
                     self.swap_out_successful_in_channel = []
 
