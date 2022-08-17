@@ -1122,7 +1122,7 @@ class Node:
             self.rebalancing_history_end_times.append(self.env.now)
         elif self.on_chain_budget < swap_amount + swap_in_fees:
             if self.verbose:
-                print("Time {:.2f}: SWAP-IN aborted due to insufficient balance in channel N-{}.".format(self.env.now, neighbor, swap_amount))
+                print("Time {:.2f}: SWAP-IN aborted due to insufficient on-chain balance.".format(self.env.now, neighbor, swap_amount))
             self.rebalancing_history_results.append("ABORTED")
             self.rebalancing_history_end_times.append(self.env.now)
         else:
