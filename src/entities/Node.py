@@ -883,34 +883,33 @@ class Node:
                 yield rebalance_request
 
                 if self.rebalancing_parameters["rebalancing_policy"] == "Autoloop":
-                    midpoint = self.capacities[neighbor] * (self.rebalancing_parameters["lower_threshold"] + self.rebalancing_parameters["upper_threshold"]) / 2
+                    midpoint = self.capacities[neighbor] * (self.rebalancing_parameters["autoloop_lower_threshold"] + self.rebalancing_parameters["autoloop_upper_threshold"]) / 2
 
-                    if self.local_balances[neighbor] < self.rebalancing_parameters["lower_threshold"] * self.capacities[neighbor]:  # SWAP-IN
+                    if self.local_balances[neighbor] < self.rebalancing_parameters["autoloop_lower_threshold"] * self.capacities[neighbor]:  # SWAP-IN
                         swap_amount = midpoint - self.local_balances[neighbor]
                         yield self.env.process(self.swap_in(neighbor, swap_amount, rebalance_request))
-                    elif self.local_balances[neighbor] > self.rebalancing_parameters["upper_threshold"] * self.capacities[neighbor]:  # SWAP-OUT
+                    elif self.local_balances[neighbor] > self.rebalancing_parameters["autoloop_upper_threshold"] * self.capacities[neighbor]:  # SWAP-OUT
                         swap_amount = self.local_balances[neighbor] - midpoint
                         yield self.env.process(self.swap_out(neighbor, swap_amount, rebalance_request))
                     else:
                         pass  # no rebalancing needed
                         if self.verbose:
                             print("Time {:.2f}: SWAP not needed in channel N-{}.".format(self.env.now, neighbor))
-                #
-                # elif self.rebalancing_parameters["rebalancing_policy"] == "Autoloop-infrequent":
-                #     midpoint = self.capacities[neighbor] * (self.rebalancing_parameters["lower_threshold"] + self.rebalancing_parameters["upper_threshold"]) / 2
-                #     other_neighbor = "R" if neighbor == "L" else "L"
-                #     self.net_demands[neighbor] = self.demand_estimates[neighbor] - (self.demand_estimates[other_neighbor] - self.calculate_fees(self.demand_estimates[other_neighbor]))
-                #
-                #     if self.balances[neighbor] < self.rebalancing_parameters["T_conf"] * self.net_demands[neighbor]:    # SWAP-IN
-                #         swap_amount = midpoint - self.balances[neighbor]
-                #         yield self.env.process(self.swap_in(neighbor, swap_amount, rebalance_request))
-                #     elif self.balances[neighbor] > self.rebalancing_parameters["T_conf"] * self.net_demands[neighbor]:      # SWAP-OUT
-                #         swap_amount = self.balances[neighbor] - midpoint
-                #         yield self.env.process(self.swap_out(neighbor, swap_amount, rebalance_request))
-                #     else:
-                #         pass    # no rebalancing needed
-                #         if self.verbose:
-                #             print("Time {:.2f}: SWAP not needed in channel N-{}.". format(self.env.now, neighbor))
+
+                elif self.rebalancing_parameters["rebalancing_policy"] == "Autoloop-infrequent":
+                    midpoint = self.capacities[neighbor] * (self.rebalancing_parameters["autoloop_lower_threshold"] + self.rebalancing_parameters["autoloop_upper_threshold"]) / 2
+                    net_rate_of_local_balance_change = {"L": self.A_hat_net_NL, "R": self.A_hat_net_NR}
+
+                    if self.local_balances[neighbor] < self.rebalancing_parameters["T_conf"] * net_rate_of_local_balance_change[neighbor]:    # SWAP-IN
+                        swap_amount = midpoint - self.local_balances[neighbor]
+                        yield self.env.process(self.swap_in(neighbor, swap_amount, rebalance_request))
+                    elif self.local_balances[neighbor] > self.rebalancing_parameters["T_conf"] * net_rate_of_local_balance_change[neighbor]:      # SWAP-OUT
+                        swap_amount = self.local_balances[neighbor] - midpoint
+                        yield self.env.process(self.swap_out(neighbor, swap_amount, rebalance_request))
+                    else:
+                        pass    # no rebalancing needed
+                        if self.verbose:
+                            print("Time {:.2f}: SWAP not needed in channel N-{}.". format(self.env.now, neighbor))
 
                 elif self.rebalancing_parameters["rebalancing_policy"] == "Loopmax":
                     net_rate_of_local_balance_change = {"L": self.A_hat_net_NL, "R": self.A_hat_net_NR}

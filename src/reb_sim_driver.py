@@ -55,8 +55,8 @@ def pypet_wrapper(traj):
         # "server_min_swap_amount": traj.server_min_swap_amount,
         "server_swap_fee": traj.server_swap_fee,
         "rebalancing_policy": traj.rebalancing_policy,
-        "lower_threshold": traj.lower_threshold,
-        "upper_threshold": traj.upper_threshold,
+        "autoloop_lower_threshold": traj.autoloop_lower_threshold,
+        "autoloop_upper_threshold": traj.autoloop_upper_threshold,
         # "default_swap_amount": traj.default_swap_amount,
         "check_interval": traj.check_interval,
         "T_conf": traj.T_conf,
@@ -164,8 +164,8 @@ def main():
     # rebalancing_policy = "autoloop"
     rebalancing_policy = "loopmax"
     # rebalancing_policy_parameters = [0.2, 0.8, server_min_swap_amount]  # [min % balance, max % balance, margin from target to launch]
-    lower_threshold = 0.3
-    upper_threshold = 0.7
+    autoloop_lower_threshold = 0.3
+    autoloop_upper_threshold = 0.7
     # default_swap_amount = server_min_swap_amount
     check_interval = 10     # minutes
 
@@ -205,8 +205,8 @@ def main():
     # traj.f_add_parameter('server_min_swap_amount', server_min_swap_amount, comment='Minimum amount the LSP allows for a swap')
     traj.f_add_parameter('server_swap_fee', server_swap_fee, comment='Percentage of swap amount the LSP charges as fees')
     traj.f_add_parameter('rebalancing_policy', rebalancing_policy, comment='Rebalancing policy')
-    traj.f_add_parameter('lower_threshold', lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in according to the Autoloop policy')
-    traj.f_add_parameter('upper_threshold', upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out according to the Autoloop policy')
+    traj.f_add_parameter('autoloop_lower_threshold', autoloop_lower_threshold, comment='Balance percentage threshold below which the channel needs a swap-in according to the Autoloop policy')
+    traj.f_add_parameter('autoloop_upper_threshold', autoloop_upper_threshold, comment='Balance percentage threshold above which the channel needs a swap-out according to the Autoloop policy')
     # traj.f_add_parameter('default_swap_amount', default_swap_amount, comment='Default swap amount node N requests')
     traj.f_add_parameter('check_interval', check_interval, comment='Time in seconds every which a check for rebalancing is performed')
     traj.f_add_parameter('T_conf', T_conf, comment='Confirmation time (seconds) for an on-chain transaction')
@@ -232,8 +232,8 @@ def main():
         # 'proportional_fee': [0.01, 0.05, 0.1, 0.2, 0.25],
         # 'proportional_fee': [0.1],
         # 'proportional_fee': [0.02],
-        # 'upper_threshold': [0.7, 0.8, 0.9, 0.95, 0.99],
-        # 'upper_threshold': [0.7],
+        # 'autoloop_upper_threshold': [0.7, 0.8, 0.9, 0.95, 0.99],
+        # 'autoloop_upper_threshold': [0.7],
         # 'rebalancing_policy': ['None', 'Autoloop', 'Loopmax'],
         'rebalancing_policy': ['None', 'Autoloop', 'Loopmax', 'RebEL'],
         # 'rebalancing_policy': ['RebEL'],
