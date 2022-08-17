@@ -104,8 +104,9 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     elif (total_transactions_L_to_R > 0) and (total_transactions_R_to_L == 0):
         total_simulation_time_estimation = total_transactions_L_to_R * 1 / exp_mean_L_to_R
     elif (total_transactions_L_to_R == 0) and (total_transactions_R_to_L > 0):
-        total_transactions_R_to_L * 1 / exp_mean_R_to_L
+        total_simulation_time_estimation = total_transactions_R_to_L * 1 / exp_mean_R_to_L
     else:
+        total_simulation_time_estimation = 0
         print("Simulation for 0 transactions is not possible. Exiting.")
         exit(1)
     random.seed(seed)
@@ -231,8 +232,9 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     }
 
     print("Initial total fortune of node N = {:.2f}".format(initial_fortune))
-    print("Final total fortune of node N without pending swaps = {:.2f}".format(final_fortune_without_pending_swaps))
-    print("Final total fortune of node N with pending swaps = {:.2f}\n".format(final_fortune_with_pending_swaps))
+    # print("Final total fortune of node N without pending swaps = {:.2f}".format(final_fortune_without_pending_swaps))
+    # print("Final total fortune of node N with pending swaps = {:.2f}\n".format(final_fortune_with_pending_swaps))
+    print("Final total fortune of node N = {:.2f}\n".format(final_fortune_with_pending_swaps))
 
     return results
 
