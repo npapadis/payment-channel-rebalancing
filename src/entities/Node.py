@@ -474,15 +474,16 @@ class Node:
                     # next_state, reward, done, _ = rlenv.step(action)
 
                     [r_L, r_R] = processed_action
+                    processed_action_absolute = {
+                        "L": r_L * (self.max_swap_out_amount_due_to_current_constraints["L"] if r_L < 0 else self.max_swap_in_amount_due_to_current_constraints["L"]),
+                        "R": r_R * (self.max_swap_out_amount_due_to_current_constraints["R"] if r_R < 0 else self.max_swap_in_amount_due_to_current_constraints["R"]),
+                    }
+
                     # execute non-zero swaps
                     if r_L > 0.0:
                         if r_R > 0.0:
                             # print("Unreachable point reached: swap-ins in both channels is not a valid swap combination.")
                             # exit(1)
-                            processed_action_absolute = {
-                                "L": r_L * self.max_swap_in_amount_due_to_current_constraints["L"],
-                                "R": r_R * self.max_swap_in_amount_due_to_current_constraints["R"],
-                            }
                             yield self.env.process(self.swap_in(
                                 neighbor="L",
                                 # swap_amount=r_L * self.capacities["L"],
@@ -494,10 +495,6 @@ class Node:
                                 rebalance_request=rebalance_request_R)
                             )
                         elif r_R == 0:
-                            processed_action_absolute = {
-                                "L": r_L * self.max_swap_in_amount_due_to_current_constraints["L"],
-                                "R": 0.0,
-                            }
                             yield self.env.process(self.swap_in(
                                 neighbor="L",
                                 # swap_amount=r_L,
@@ -508,10 +505,6 @@ class Node:
                             if self.verbose:
                                 print("Time {:.2f}: No SWAP performed in channel N-R.". format(self.env.now))
                         else:   # if r_R < 0.0
-                            processed_action_absolute = {
-                                "L": r_L * self.max_swap_in_amount_due_to_current_constraints["L"],
-                                "R": -r_R * self.max_swap_out_amount_due_to_current_constraints["R"],
-                            }
                             yield self.env.process(self.swap_in(
                                 neighbor="L",
                                 # swap_amount=r_L,
@@ -522,7 +515,7 @@ class Node:
                                 neighbor="R",
                                 # swap_amount=-r_R,
                                 # swap_amount=-r_R * self.capacities["R"],
-                                swap_amount=processed_action_absolute["R"],
+                                swap_amount=-processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
 
@@ -530,10 +523,6 @@ class Node:
                         if self.verbose:
                             print("Time {:.2f}: No SWAP performed in channel N-L.".format(self.env.now))
                         if r_R > 0.0:
-                            processed_action_absolute = {
-                                "L": 0.0,
-                                "R": r_R * self.max_swap_in_amount_due_to_current_constraints["R"],
-                            }
                             yield self.env.process(self.swap_in(
                                 neighbor="R",
                                 # swap_amount=r_R,
@@ -542,37 +531,25 @@ class Node:
                                 rebalance_request=rebalance_request_R)
                             )
                         elif r_R == 0:
-                            processed_action_absolute = {
-                                "L": 0.0,
-                                "R": 0.0,
-                            }
                             pass
                             if self.verbose:
                                 print("Time {:.2f}: No SWAP performed in channel N-R.".format(self.env.now))
                             yield self.env.timeout(self.rebalancing_parameters["T_conf"])   # wait for T_conf so that the correct reward is accumulated from dropped transactions
                         else:   # if r_R < 0.0
-                            processed_action_absolute = {
-                                "L": 0.0,
-                                "R": -r_R * self.max_swap_out_amount_due_to_current_constraints["R"],
-                            }
                             yield self.env.process(self.swap_out(
                                 neighbor="R",
                                 # swap_amount=-r_R,
                                 # swap_amount=-r_R * self.capacities["R"],
-                                swap_amount=processed_action_absolute["R"],
+                                swap_amount=-processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
                     else:   # if r_L < 0.0
                         if r_R > 0.0:
-                            processed_action_absolute = {
-                                "L": -r_L * self.max_swap_out_amount_due_to_current_constraints["L"],
-                                "R": r_R * self.max_swap_in_amount_due_to_current_constraints["R"],
-                            }
                             yield self.env.process(self.swap_out(
                                 neighbor="L",
                                 # swap_amount=-r_L,
                                 # swap_amount=-r_L * self.capacities["L"],
-                                swap_amount=processed_action_absolute["L"],
+                                swap_amount=-processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             ) & self.env.process(self.swap_in(
                                 neighbor="R",
@@ -581,36 +558,28 @@ class Node:
                                 swap_amount=processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
-                        elif r_R == 0:
-                            processed_action_absolute = {
-                                "L": -r_L * self.max_swap_out_amount_due_to_current_constraints["L"],
-                                "R": 0.0,
-                            }
+                        elif r_R == 0.0:
                             yield self.env.process(self.swap_out(
                                 neighbor="L",
                                 # swap_amount=-r_L,
                                 # swap_amount=-r_L * self.capacities["L"],
-                                swap_amount=processed_action_absolute["L"],
+                                swap_amount=-processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             )
                             if self.verbose:
                                 print("Time {:.2f}: No SWAP performed in channel N-R.".format(self.env.now))
                         else:  # if r_R < 0.0
-                            processed_action_absolute = {
-                                "L": -r_L * self.max_swap_out_amount_due_to_current_constraints["L"],
-                                "R": -r_R * self.max_swap_out_amount_due_to_current_constraints["R"],
-                            }
                             yield self.env.process(self.swap_out(
                                 neighbor="L",
                                 # swap_amount=-r_L,
                                 # swap_amount=-r_L * self.capacities["L"],
-                                swap_amount=processed_action_absolute["L"],
+                                swap_amount=-processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             ) & self.env.process(self.swap_out(
                                 neighbor="R",
                                 # swap_amount=-r_R,
                                 # swap_amount=-r_R * self.capacities["R"],
-                                swap_amount=processed_action_absolute["R"],
+                                swap_amount=-processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
 
