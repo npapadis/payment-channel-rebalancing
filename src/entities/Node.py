@@ -30,7 +30,7 @@ class Node:
         self.rebalancing_parameters = rebalancing_parameters
         self.verbose = verbose
         self.verbose_also_print_transactions = verbose_also_print_transactions
-        self.latest_transactions_buffer_size = 100
+        # self.latest_transactions_buffer_size = 1000000000000
         self.latest_transactions = []
         self.latest_two_T_check_transactions = []
         self.total_amount_that_arrived_L_to_R = 0
@@ -188,10 +188,10 @@ class Node:
             print("Time {:.2f}: New balances are: |L| {:.2f}---{:.2f} |N| {:.2f}---{:.2f} |R|, on-chain = {:.2f}, IN-pending = {:.2f}, OUT-pending = {:.2f}.".format(self.env.now, self.remote_balances["L"], self.local_balances["L"], self.local_balances["R"], self.remote_balances["R"], self.on_chain_budget, self.swap_IN_amounts_in_progress["L"] + self.swap_IN_amounts_in_progress["R"], self.swap_OUT_amounts_in_progress["L"] + self.swap_OUT_amounts_in_progress["R"]))
 
     def process_transaction(self, t):
-        # Update the memory of the latest transactions
-        if len(self.latest_transactions) >= self.latest_transactions_buffer_size:
-            self.latest_transactions.pop(0)
-        self.latest_transactions.append(t)
+        # # Update the memory of the latest transactions
+        # if len(self.latest_transactions) >= self.latest_transactions_buffer_size:
+        #     self.latest_transactions.pop(0)
+        # self.latest_transactions.append(t)
 
         # Buffer of transactions of last two check times used for Reward 13
         # self.latest_two_T_check_transactions.append(t)
