@@ -10,20 +10,6 @@ from math import floor, ceil
 import numpy as np
 
 
-class Logger:
-
-    def __init__(self, filename):
-        self.console = sys.stdout
-        self.file = open(filename, 'w')
-
-    def write(self, message):
-        self.console.write(message)
-        self.file.write(message)
-
-    def flush(self):
-        self.console.flush()
-        self.file.flush()
-
 
 def pypet_wrapper(traj):
     node_parameters = {
@@ -180,6 +166,7 @@ def main():
     # Create the environment
     env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
                             filename='outputs/results/' + filename + '.hdf5',
+                            log_folder='./outputs/logs/',
                             log_stdout=True,
                             overwrite_file=True)
     traj = env.traj
@@ -250,10 +237,8 @@ def main():
 
     # Run wrapping function instead of simulator directly
     env.run(pypet_wrapper)
+    env.disable_logging()
 
 
 if __name__ == '__main__':
-    log_path = './my_log.txt'
-    sys.stdout = Logger(log_path)
-
     main()
