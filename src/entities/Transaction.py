@@ -2,8 +2,6 @@ import sys
 
 
 class Transaction:
-    # def __init__(self, env, time_of_arrival, path, previous_node, current_node, next_node, amount, verbose):
-    # def __init__(self, env, topology, time_of_arrival, source, destination, amount, verbose):
     def __init__(self, env, topology, time_of_arrival, source, destination, amount, verbose, verbose_also_print_transactions):
         self.env = env
         self.time_of_arrival = time_of_arrival

@@ -1,7 +1,4 @@
-from math import ceil, floor
-
-from matplotlib.lines import Line2D
-from pypet import load_trajectory, pypetconstants, utils
+from pypet import load_trajectory, pypetconstants
 import numpy as np
 import matplotlib.pyplot as plt
 from cycler import cycler
@@ -13,9 +10,6 @@ outputs_directory = str(Path("../outputs").resolve())
 save_at_directory = outputs_directory + "/figures/"
 Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 
-# filename = 'results_01'
-# filename = 'results_02'
-# filename = 'results_03'
 filename = 'results_212'
 
 # fee_studied = 'base_fee'
@@ -23,7 +17,6 @@ fee_studied = 'proportional_fee'
 result = 'final_fortune_with_pending_swaps'
 # result = 'final_fortune_with_pending_swaps_minus_losses'
 # result = 'success_rate_node_total'
-
 
 
 traj = load_trajectory(filename=outputs_directory + '/results/' + filename + '.hdf5', name='relay_node_channel_rebalancing', load_all=pypetconstants.LOAD_DATA)
@@ -79,9 +72,8 @@ for rebalancing_policy_index, rebalancing_policy in enumerate(par_rebalancing_po
     lines, labels = ax1.get_legend_handles_labels()
     legend = ax1.legend(lines, labels, loc='best')
 
-    # fig.savefig(save_at_directory + filename + "_" + result + ".png", bbox_inches='tight')
     fig.savefig(save_at_directory + filename + "_final_fortune_wrt_" + fee_studied + ".png", bbox_inches='tight')
-    # fig.savefig(save_at_directory + filename + ".pdf", bbox_inches='tight')
+    # fig.savefig(save_at_directory + filename + "_final_fortune_wrt_" + fee_studied + ".pdf", bbox_inches='tight')
 
     # legend_filename = filename + "_legend.png"
     # save_legend(fig, lines, labels, legend, save_at_directory, legend_filename)

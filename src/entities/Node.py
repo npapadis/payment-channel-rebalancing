@@ -13,8 +13,6 @@ from src.utils.MDP_utils import *
 
 
 class Node:
-    # def __init__(self, env, node_parameters, rebalancing_parameters, demand_estimates, verbose):
-    # def __init__(self, env, node_parameters, rebalancing_parameters, verbose):
     def __init__(self, env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions, filename):
         self.env = env
         self.local_balances = {"L": node_parameters["initial_balance_L"], "R": node_parameters["initial_balance_R"]}
@@ -22,7 +20,6 @@ class Node:
         self.capacities = {"L": node_parameters["capacity_L"], "R": node_parameters["capacity_R"]}
         self.fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
         self.on_chain_budget = node_parameters["on_chain_budget"]
-        # self.target_max_on_chain_amount = 100 * max(self.capacities["L"], self.capacities["R"])
         self.initial_fortune = node_parameters["initial_balance_L"] + node_parameters["initial_balance_R"] + node_parameters["on_chain_budget"]
         self.node_is_accepting_transactions = True
 
@@ -59,13 +56,6 @@ class Node:
             self.learning_parameters = LearningParameters()
             self.target_max_on_chain_amount = self.on_chain_budget * self.learning_parameters.on_chain_normalization_multiplier
             torch.manual_seed(self.learning_parameters.seed)
-            # self.observation_space = spaces.Box(
-            #         low=np.zeros(5),
-            #         high=np.array(
-            #             [self.capacities["L"], self.capacities["L"], self.capacities["R"], self.capacities["R"], np.Inf]),
-            #         shape=(5,),
-            #         dtype=float
-            #     )
             self.observation_space = spaces.Box(
                     # low=np.zeros(5),
                     low=np.zeros(7),
@@ -75,13 +65,6 @@ class Node:
                     shape=(7,),
                     dtype=float
                 )
-            # self.action_space = spaces.Box(
-            #     low=np.array([- self.capacities["L"], - self.capacities["R"]]),
-            #     high=np.array([self.capacities["L"], self.capacities["R"]]),
-            #     shape=(2,),
-            #     dtype=float,
-            #     seed=self.learning_parameters.seed
-            # )
             self.action_space = spaces.Box(
                 low=np.array([-1.0, -1.0]),
                 high=np.array([1.0, 1.0]),
@@ -236,7 +219,6 @@ class Node:
         self.rebalancing_fees_since_last_transaction = 0.0
 
 
-    # def perform_rebalancing_if_needed(self, neighbor):
     def perform_rebalancing_if_needed(self):
         if self.rebalancing_parameters["rebalancing_policy"] == "None":
             return
@@ -292,17 +274,6 @@ class Node:
 
                     # Perform environment step
 
-                    # state = [
-                    #     self.remote_balances["L"],
-                    #     self.local_balances["L"],
-                    #     self.local_balances["R"],
-                    #     self.remote_balances["R"],
-                    #     self.on_chain_budget,
-                    #     # self.swap_IN_amounts_in_progress["L"],
-                    #     # self.swap_OUT_amounts_in_progress["L"],
-                    #     # self.swap_IN_amounts_in_progress["R"],
-                    #     # self.swap_OUT_amounts_in_progress["R"]
-                    # ]
                     state = [
                         self.remote_balances["L"] / self.capacities["L"],
                         self.local_balances["L"] / self.capacities["L"],
@@ -366,114 +337,6 @@ class Node:
                         N=self,
                     )
 
-
-                    # expanded_action = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)
-                    # [r_L_in, r_L_out, r_R_in, r_R_out] = expanded_action
-
-                    # if [r_L_in, r_L_out, r_R_in, r_R_out] == [0.0, 0.0, 0.0, 0.0]:
-                    #     pass
-                    #     if self.verbose:
-                    #         print("Time {:.2f}: SWAP not needed in any channel of node N.".format(self.env.now))
-                    # # elif
-                    # else:   # execute non-zero swaps
-                    #     if (r_L_in > 0.0) and (r_R_out > 0.0):
-                    #         yield self.env.process(self.swap_in(
-                    #             neighbor="L",
-                    #             swap_amount=r_L_in,
-                    #             rebalance_request=rebalance_request_L)
-                    #         ) & self.env.process(self.swap_out(
-                    #             neighbor="R",
-                    #             swap_amount=r_R_out,
-                    #             rebalance_request=rebalance_request_R)
-                    #         )
-                    #     elif (r_L_in > 0.0) and (r_R_out == 0.0):
-                    #         yield self.env.process(self.swap_in(
-                    #             neighbor="L",
-                    #             swap_amount=r_L_in,
-                    #             rebalance_request=rebalance_request_L)
-                    #         )
-                    #     elif (r_L_in == 0.0) and (r_R_out > 0.0):
-                    #         yield self.env.process(self.swap_out(
-                    #             neighbor="R",
-                    #             swap_amount=r_R_out,
-                    #             rebalance_request=rebalance_request_R)
-                    #         )
-                    #     elif (r_L_out > 0.0) and (r_R_in > 0.0):
-                    #         yield self.env.process(self.swap_out(
-                    #             neighbor="L",
-                    #             swap_amount=r_L_out,
-                    #             rebalance_request=rebalance_request_L)
-                    #         ) & self.env.process(self.swap_in(
-                    #             neighbor="R",
-                    #             swap_amount=r_R_in,
-                    #             rebalance_request=rebalance_request_R)
-                    #         )
-                    #     elif (r_L_out > 0.0) and (r_R_in == 0.0):
-                    #         yield self.env.process(self.swap_out(
-                    #             neighbor="L",
-                    #             swap_amount=r_L_out,
-                    #             rebalance_request=rebalance_request_L)
-                    #         )
-                    #     elif (r_L_out == 0) and (r_R_in > 0):
-                    #         yield self.env.process(self.swap_in(
-                    #             neighbor="R",
-                    #             swap_amount=r_R_in,
-                    #             rebalance_request=rebalance_request_R)
-                    #         )
-                    #     elif (r_L_out > 0.0) and (r_R_out > 0.0):
-                    #         yield self.env.process(self.swap_out(
-                    #             neighbor="L",
-                    #             swap_amount=r_L_out,
-                    #             rebalance_request=rebalance_request_L)
-                    #         ) & self.env.process(self.swap_out(
-                    #             neighbor="R",
-                    #             swap_amount=r_R_out,
-                    #             rebalance_request=rebalance_request_R)
-                    #         )
-                    #
-                    #     else:
-                    #         print("Unreachable point reached: invalid swap amount combination.")
-                    #         exit(1)
-
-                        # # -----------------------------
-                        # if r_L_in > 0:
-                        #     yield self.env.process(self.swap_in(
-                        #         neighbor="L",
-                        #         swap_amount=r_L_in,
-                        #         rebalance_request=rebalance_request_L)
-                        #     )
-                        # else:   # if r_L_in == 0
-                        #     pass
-                        #
-                        # if r_L_out > 0:
-                        #     yield self.env.process(self.swap_out(
-                        #         neighbor="L",
-                        #         swap_amount=r_L_out,
-                        #         rebalance_request=rebalance_request_L)
-                        #     )
-                        # else:   # if r_L_out == 0
-                        #     pass
-                        #
-                        # if r_R_in > 0:
-                        #     yield self.env.process(self.swap_in(
-                        #         neighbor="R",
-                        #         swap_amount=r_R_in,
-                        #         rebalance_request=rebalance_request_R)
-                        #     )
-                        # else:   # if r_R_in == 0
-                        #     pass
-                        #
-                        # if r_R_out > 0:
-                        #     yield self.env.process(self.swap_out(
-                        #         neighbor="R",
-                        #         swap_amount=r_R_out,
-                        #         rebalance_request=rebalance_request_R)
-                        #     )
-                        # else:   # if r_R_out == 0
-                        #     pass
-
-                    # next_state, reward, done, _ = rlenv.step(action)
-
                     [r_L, r_R] = processed_action
                     processed_action_absolute = {
                         "L": r_L * (self.max_swap_out_amount_due_to_current_constraints["L"] if r_L < 0 else self.max_swap_in_amount_due_to_current_constraints["L"]),
@@ -483,11 +346,8 @@ class Node:
                     # execute non-zero swaps
                     if r_L > 0.0:
                         if r_R > 0.0:
-                            # print("Unreachable point reached: swap-ins in both channels is not a valid swap combination.")
-                            # exit(1)
                             yield self.env.process(self.swap_in(
                                 neighbor="L",
-                                # swap_amount=r_L * self.capacities["L"],
                                 swap_amount=processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             ) & self.env.process(self.swap_in(
@@ -498,8 +358,6 @@ class Node:
                         elif r_R == 0:
                             yield self.env.process(self.swap_in(
                                 neighbor="L",
-                                # swap_amount=r_L,
-                                # swap_amount=r_L * self.capacities["L"],
                                 swap_amount=processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             )
@@ -508,14 +366,10 @@ class Node:
                         else:   # if r_R < 0.0
                             yield self.env.process(self.swap_in(
                                 neighbor="L",
-                                # swap_amount=r_L,
-                                # swap_amount=r_L * self.capacities["L"],
                                 swap_amount=processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             ) & self.env.process(self.swap_out(
                                 neighbor="R",
-                                # swap_amount=-r_R,
-                                # swap_amount=-r_R * self.capacities["R"],
                                 swap_amount=-processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
@@ -526,8 +380,6 @@ class Node:
                         if r_R > 0.0:
                             yield self.env.process(self.swap_in(
                                 neighbor="R",
-                                # swap_amount=r_R,
-                                # swap_amount=r_R * self.capacities["R"],
                                 swap_amount=processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
@@ -539,8 +391,6 @@ class Node:
                         else:   # if r_R < 0.0
                             yield self.env.process(self.swap_out(
                                 neighbor="R",
-                                # swap_amount=-r_R,
-                                # swap_amount=-r_R * self.capacities["R"],
                                 swap_amount=-processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
@@ -548,22 +398,16 @@ class Node:
                         if r_R > 0.0:
                             yield self.env.process(self.swap_out(
                                 neighbor="L",
-                                # swap_amount=-r_L,
-                                # swap_amount=-r_L * self.capacities["L"],
                                 swap_amount=-processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             ) & self.env.process(self.swap_in(
                                 neighbor="R",
-                                # swap_amount=r_R,
-                                # swap_amount=r_R * self.capacities["R"],
                                 swap_amount=processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
                         elif r_R == 0.0:
                             yield self.env.process(self.swap_out(
                                 neighbor="L",
-                                # swap_amount=-r_L,
-                                # swap_amount=-r_L * self.capacities["L"],
                                 swap_amount=-processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             )
@@ -572,14 +416,10 @@ class Node:
                         else:  # if r_R < 0.0
                             yield self.env.process(self.swap_out(
                                 neighbor="L",
-                                # swap_amount=-r_L,
-                                # swap_amount=-r_L * self.capacities["L"],
                                 swap_amount=-processed_action_absolute["L"],
                                 rebalance_request=rebalance_request_L)
                             ) & self.env.process(self.swap_out(
                                 neighbor="R",
-                                # swap_amount=-r_R,
-                                # swap_amount=-r_R * self.capacities["R"],
                                 swap_amount=-processed_action_absolute["R"],
                                 rebalance_request=rebalance_request_R)
                             )
@@ -587,13 +427,6 @@ class Node:
                     self.update_estimates()
                     # calculate_estimates_formula_3(self)
 
-                    # next_state = [
-                    #     self.remote_balances["L"],
-                    #     self.local_balances["L"],
-                    #     self.local_balances["R"],
-                    #     self.remote_balances["R"],
-                    #     self.on_chain_budget,
-                    # ]
                     next_state = [
                         self.remote_balances["L"] / self.capacities["L"],
                         self.local_balances["L"] / self.capacities["L"],
@@ -614,6 +447,8 @@ class Node:
                         next_state[6] * self.capacities["R"]
                     ]
 
+                    [r_L_in, r_L_out, r_R_in, r_R_out] = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)
+
                     # Reward 1
                     # reward = - ( self.fee_losses_since_last_check_time
                     #     +
@@ -622,7 +457,7 @@ class Node:
                     #     (self.calculate_swap_in_fees(r_R_in) if "R" in self.swap_in_successful_in_channel else 0) +
                     #     self.calculate_swap_out_fees(r_R_out)
                     # )
-                    [r_L_in, r_L_out, r_R_in, r_R_out] = expand_action(processed_action)   # expanded action = (r_L_in, r_L_out, r_R_in, r_R_out)
+
                     # Reward 2
                     # reward = - (self.fee_losses_since_last_check_time
                     #             +
@@ -697,7 +532,6 @@ class Node:
                         float((self.S_hat_net_NR < 0) and ((raw_action[1] > 0) or ((raw_action[0] < 0) and (processed_action_absolute["R"] == 0.0)))) + \
                         float((self.S_hat_net_NR > 0) and ((raw_action[1] < 0) or ((raw_action[0] > 0) and (processed_action_absolute["R"] == 0.0))))
 
-
                     number_of_zero_swaps = float(processed_action_absolute["L"] == 0.0) + float(processed_action_absolute["R"] == 0.0)
 
                     # Reward 6
@@ -762,10 +596,6 @@ class Node:
                     #           - self.target_fortune_increase
                     #           )#*100#0 / self.initial_fortune
 
-
-
-
-
                     # Reward 10 (rate)
                     # self.target_fortune_increase_rate = 1    #50 * self.initial_fortune - self.initial_fortune
                     # reward = (((total_fortune_after - total_fortune_before
@@ -801,7 +631,6 @@ class Node:
                     #             - self.learning_parameters.penalty_for_swap_in_wrong_direction * number_of_swaps_chosen_in_the_wrong_direction
                     #           ) / self.reward_normalizer
 
-
                     self.steps_in_current_episode += 1
                     self.episode_is_done = self.steps_in_current_episode >= self.learning_parameters.episode_duration
                     self.fee_losses_since_last_check_time = 0
@@ -810,7 +639,6 @@ class Node:
                     self.swap_out_successful_in_channel = []
 
                     mask = float(not self.episode_is_done)
-
 
                     # # Reward 13 (reward of an action dependending on two check_intervals and not only one
                     # time_to_wait = 2*self.rebalancing_parameters["check_interval"] - self.rebalancing_parameters["T_conf"]-0.001
@@ -836,11 +664,10 @@ class Node:
                     # self.fee_losses_since_two_check_times_ago = self.fee_losses_since_last_check_time
                     # self.fee_profits_since_two_check_times_ago = self.fee_profits_since_last_check_time
 
-                    # self.replay_memory.push(state, processed_action, reward, next_state, mask)  # Append transition to memory
                     self.replay_memory.push(state, raw_action, reward, next_state, mask)  # Append transition to memory
 
                     if self.verbose:
-                        # Print values as they are
+                        # # Print values as they are
                         # print_precision = "%.5f"
                         # state_printable = [print_precision % elem for elem in state]
                         # processed_action_printable = [print_precision % elem for elem in processed_action]
@@ -850,6 +677,7 @@ class Node:
                         #         self.env.now, state_printable, processed_action_printable, raw_action_printable, reward, next_state_printable
                         #     )
                         # )
+
                         # Print values converted to absolute amounts
                         processed_action_absolute_as_a_list = [processed_action_absolute[neighbor] for neighbor in ["L", "R"]]
 
@@ -919,9 +747,6 @@ class Node:
                         expected_time_to_depletion = self.local_balances[neighbor] / (- net_rate_of_local_balance_change[neighbor])
                         if expected_time_to_depletion - self.rebalancing_parameters["check_interval"] < self.rebalancing_parameters["T_conf"]:
                             safety_margin_in_coins = - net_rate_of_local_balance_change[neighbor] * self.rebalancing_parameters["safety_margins_in_minutes"][neighbor]
-                            # swap_amount = self.max_swap_in_amount(neighbor)
-                            # swap_amount = self.max_swap_in_amount(neighbor) - safety_margin_in_coins
-                            # swap_amount = min(self.max_swap_in_amount_allowed_by_on_chain_balance(), self.remote_balances[neighbor]) - safety_margin_in_coins
                             swap_amount = min(self.phi_inverse(self.on_chain_budget), self.remote_balances[neighbor]) - safety_margin_in_coins
                             yield self.env.process(self.swap_in(neighbor, swap_amount, rebalance_request))
                         else:
@@ -1098,11 +923,7 @@ class Node:
         #     print("Time {:.2f}: b_hat_LN_future_estimate = {:.2f}, b_hat_RN_future_estimate = {:.2f}".format(self.env.now, self.b_hat_LN_future_estimate, self.b_hat_RN_future_estimate))
 
 
-
-    # def max_swap_in_amount_allowed_by_on_chain_balance(self, neighbor):
     def max_swap_in_amount_allowed_by_on_chain_balance(self):
-        # return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.capacities[neighbor])
-        # return min(self.on_chain_budget * (1 - self.rebalancing_parameters["server_swap_fee"]) - self.rebalancing_parameters["miner_fee"], self.remote_balances[neighbor])
         return (self.on_chain_budget - self.rebalancing_parameters["miner_fee"]) / (1 + self.rebalancing_parameters["server_swap_fee"])
 
     def swap_in(self, neighbor, swap_amount, rebalance_request):

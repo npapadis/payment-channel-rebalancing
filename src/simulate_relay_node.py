@@ -7,7 +7,6 @@ from src.entities.Node import Node
 from src.entities.Transaction import Transaction
 
 
-# def transaction_generator(env, topology, source, destination, total_transactions, exp_mean, amount_distribution, amount_distribution_parameters, all_transactions_list, verbose):
 def transaction_generator(env, topology, source, destination, total_transactions, exp_mean, amount_distribution, amount_distribution_parameters, all_transactions_list, verbose, verbose_also_print_transactions):
     time_to_next_arrival = random.exponential(1.0 / exp_mean)
     yield env.timeout(time_to_next_arrival)
@@ -40,7 +39,6 @@ def transaction_generator(env, topology, source, destination, total_transactions
             print("Input error: {} is not a supported amount distribution or the parameters {} given are invalid.".format(amount_distribution, amount_distribution_parameters))
             sys.exit(1)
 
-        # t = Transaction(env, topology, env.now, source, destination, amount, verbose)
         t = Transaction(env, topology, env.now, source, destination, amount, verbose, verbose_also_print_transactions)
         all_transactions_list.append(t)
         env.process(t.run())
@@ -50,12 +48,6 @@ def transaction_generator(env, topology, source, destination, total_transactions
 
 
 def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_parameters):
-
-    # initial_balance_L = node_parameters["initial_balance_L"]
-    # initial_balance_R = node_parameters["initial_balance_R"]
-    # capacity_L = node_parameters["capacity_L"]
-    # capacity_R = node_parameters["capacity_R"]
-    # fees = [node_parameters["base_fee"], node_parameters["proportional_fee"]]
 
     total_transactions_L_to_R = experiment_parameters["total_transactions_L_to_R"]
     exp_mean_L_to_R = experiment_parameters["exp_mean_L_to_R"]
@@ -67,27 +59,6 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     amount_distribution_R_to_L = experiment_parameters["amount_distribution_R_to_L"]
     amount_distribution_parameters_R_to_L = experiment_parameters["amount_distribution_parameters_R_to_L"]
 
-    # demand_estimates = {"L": 0, "R": 0}
-    # if amount_distribution_L_to_R == "constant":
-    #     demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[0]
-    # elif amount_distribution_L_to_R == "uniform":
-    #     demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[0] / 2
-    # elif amount_distribution_L_to_R == "gaussian":
-    #     demand_estimates["L"] = exp_mean_L_to_R * amount_distribution_parameters_L_to_R[1]
-    # else:
-    #     print("Input error: {} is not a supported amount distribution.".format(amount_distribution_L_to_R))
-    #     sys.exit(1)
-    #
-    # if amount_distribution_R_to_L == "constant":
-    #     demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[0]
-    # elif amount_distribution_R_to_L == "uniform":
-    #     demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[0] / 2
-    # elif amount_distribution_R_to_L == "gaussian":
-    #     demand_estimates["R"] = exp_mean_R_to_L * amount_distribution_parameters_R_to_L[1]
-    # else:
-    #     print("Input error: {} is not a supported amount distribution.".format(amount_distribution_R_to_L))
-    #     sys.exit(1)
-
     verbose = experiment_parameters["verbose"]
     verbose_also_print_transactions = experiment_parameters["verbose_also_print_transactions"]
     filename = experiment_parameters["filename"]
@@ -98,7 +69,6 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
     # if amount_distribution_R_to_L == "empirical_from_csv_file":
     #     amount_distribution_parameters_R_to_L = [amount_distribution_parameters_R_to_L, len(amount_distribution_parameters_R_to_L)]
 
-    # total_simulation_time_estimation = max(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
     if (total_transactions_L_to_R > 0) and (total_transactions_R_to_L > 0):
         total_simulation_time_estimation = min(total_transactions_L_to_R * 1 / exp_mean_L_to_R, total_transactions_R_to_L * 1 / exp_mean_R_to_L)
     elif (total_transactions_L_to_R > 0) and (total_transactions_R_to_L == 0):
@@ -113,17 +83,13 @@ def simulate_relay_node(node_parameters, experiment_parameters, rebalancing_para
 
     env = simpy.Environment()
 
-    # N = Node(env, node_parameters, rebalancing_parameters, demand_estimates, verbose)
-    # N = Node(env, node_parameters, rebalancing_parameters, verbose)
     N = Node(env, node_parameters, rebalancing_parameters, verbose, verbose_also_print_transactions, filename)
     env.process(N.run())
 
     topology = {"N": N}
 
     all_transactions_list = []
-    # env.process(transaction_generator(env, topology, "L", "R", total_transactions_L_to_R, exp_mean_L_to_R, amount_distribution_L_to_R, amount_distribution_parameters_L_to_R, all_transactions_list, verbose))
     env.process(transaction_generator(env, topology, "L", "R", total_transactions_L_to_R, exp_mean_L_to_R, amount_distribution_L_to_R, amount_distribution_parameters_L_to_R, all_transactions_list, verbose, verbose_also_print_transactions))
-    # env.process(transaction_generator(env, topology, "R", "L", total_transactions_R_to_L, exp_mean_R_to_L, amount_distribution_R_to_L, amount_distribution_parameters_R_to_L, all_transactions_list, verbose))
     env.process(transaction_generator(env, topology, "R", "L", total_transactions_R_to_L, exp_mean_R_to_L, amount_distribution_R_to_L, amount_distribution_parameters_R_to_L, all_transactions_list, verbose, verbose_also_print_transactions))
 
     # env.run(until=total_simulation_time_estimation + rebalancing_parameters["check_interval"])

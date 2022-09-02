@@ -1,8 +1,6 @@
 from math import ceil, floor
 
-from matplotlib.lines import Line2D
-from pypet import load_trajectory, pypetconstants, utils
-import numpy as np
+from pypet import load_trajectory, pypetconstants
 import matplotlib.pyplot as plt
 from cycler import cycler
 from pathlib import Path
@@ -15,11 +13,6 @@ def plot_total_fortune_over_time(filename):
     outputs_directory = str(Path("../outputs").resolve())
     save_at_directory = outputs_directory + "/figures/"
     Path(save_at_directory).mkdir(parents=True, exist_ok=True)
-
-    # filename = 'results_01'
-    # filename = 'results_02'
-    # filename = 'results_03'
-    # filename = 'results_05'
 
     times = 'total_fortune_including_pending_swaps_times'
     result = 'total_fortune_including_pending_swaps_values'
@@ -68,7 +61,6 @@ def plot_total_fortune_over_time(filename):
     for rebalancing_policy_index, rebalancing_policy in enumerate(par_rebalancing_policy_values):
         innermost_index = rebalancing_policy_index
 
-        # ax1.plot(result_times[rebalancing_policy_index], result_values[rebalancing_policy_index], label=rebalancing_policy, linestyle=linestyles[0], marker=markers[innermost_index], color=color, alpha=1)
         ax1.plot(result_times_to_plot[rebalancing_policy], result_values_to_plot[rebalancing_policy], label=rebalancing_policy, linestyle=linestyles[0], color=colors[innermost_index], alpha=1)
 
         ax1.grid(True)

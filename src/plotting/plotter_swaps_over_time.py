@@ -1,7 +1,4 @@
-from math import ceil, floor
-
-from matplotlib.lines import Line2D
-from pypet import load_trajectory, pypetconstants, utils
+from pypet import load_trajectory, pypetconstants
 import numpy as np
 import matplotlib.pyplot as plt
 from cycler import cycler
@@ -14,8 +11,6 @@ def plot_number_of_swaps_over_time(filename):
     outputs_directory = str(Path("../outputs").resolve())
     save_at_directory = outputs_directory + "/figures/"
     Path(save_at_directory).mkdir(parents=True, exist_ok=True)
-
-    # filename = 'results_05'
 
     times = 'rebalancing_history_start_times'
 
@@ -52,7 +47,6 @@ def plot_number_of_swaps_over_time(filename):
         if rebalancing_policy == "None":
             ax1.plot([0, max_result_time], [0, 0], label=rebalancing_policy, linestyle='-', color=colors[innermost_index], alpha=1)
         else:
-            # ax1.plot(result_times[rebalancing_policy_index], result_values[rebalancing_policy_index], label=rebalancing_policy, linestyle=linestyles[0], marker=markers[innermost_index], color=color, alpha=1)
             ax1.step(result_times[rebalancing_policy_index], np.arange(len(result_times[rebalancing_policy_index])), where='pre', label=rebalancing_policy, linestyle='-', color=colors[innermost_index], alpha=1)
 
 
@@ -73,7 +67,6 @@ def plot_number_of_swaps_over_time(filename):
         # save_legend(fig, lines, labels, legend, save_at_directory, legend_filename)
 
     plt.show()
-
 
 
 if __name__ == '__main__':

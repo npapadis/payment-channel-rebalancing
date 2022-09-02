@@ -1,9 +1,3 @@
-# class RL_connector:
-# def __init__(self):
-import sys
-
-
-# def process_action_to_respect_constraints(raw_action, state, min_swap_out_amount):
 def process_action_to_respect_constraints(raw_action, state, N):
     """
     Input:
@@ -73,31 +67,18 @@ def process_action_to_respect_constraints(raw_action, state, N):
     return [processed_r_L, processed_r_R]
 
 
-# def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, estimates_of_future_remote_balances):
-# def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, min_swap_out_amount, capacities, target_max_on_chain_amount):
 def rebalancing_amount_respects_decoupled_constraints(r_amount, neighbor, state, N):
-    # local_balance = None
     local_balance_absolute = None
     if neighbor == "L":
-        # local_balance = state[1]
         local_balance_absolute = state[1] * N.capacities[neighbor]
-        # estimate_of_future_remote_balance = estimates_of_future_remote_balances[0]
     elif neighbor == "R":
-        # local_balance = state[2]
         local_balance_absolute = state[2] * N.capacities[neighbor]
-        # estimate_of_future_remote_balance = estimates_of_future_remote_balances[1]
     else:
         print("Error: invalid arguments in rebalancing_amount_respects_constraints.")
         exit(1)
 
     r_amount_absolute = r_amount * N.capacities[neighbor]
 
-    # on_chain_balance = state[4]
-    on_chain_balance_bound_absolute = state[4] * N.target_max_on_chain_amount - N.calculate_swap_in_fees(r_amount)
-
-    # if (- local_balance <= r_amount <= - min_swap_out_amount) or (0 <= r_amount <= min(on_chain_balance, estimate_of_future_remote_balance)):
-    # if (- local_balance <= r_amount <= - min_swap_out_amount) or (0.0 <= r_amount <= min(on_chain_balance_absolute, capacities[neighbor])):
-    # if (- local_balance_absolute <= r_amount_absolute <= - N.min_swap_out_amount) or (0.0 <= r_amount_absolute <= min(on_chain_balance_bound_absolute, N.capacities[neighbor])):
     if (- local_balance_absolute <= r_amount_absolute <= - N.min_swap_out_amount) or (0.0 <= r_amount_absolute <= N.capacities[neighbor]):
         constraints_are_respected = True
     else:

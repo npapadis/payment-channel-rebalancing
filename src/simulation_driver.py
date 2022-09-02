@@ -1,14 +1,5 @@
-import os
-import pickle
-
-import pandas as pd
 import pypet
 from simulate_relay_node import *
-import csv
-# from statsmodels.distributions.empirical_distribution import ECDF
-from math import floor, ceil
-import numpy as np
-
 
 
 def pypet_wrapper(traj):
@@ -105,7 +96,7 @@ def pypet_wrapper(traj):
 
 def main():
     # SIMULATION PARAMETERS
-    filename = 'results_102'
+    filename = 'results_test'
 
     # verbose = True
     verbose = False
