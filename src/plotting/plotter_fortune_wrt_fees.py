@@ -73,7 +73,7 @@ for rebalancing_policy_index, rebalancing_policy in enumerate(par_rebalancing_po
     legend = ax1.legend(lines, labels, loc='best')
 
     fig.savefig(save_at_directory + filename + "_final_fortune_wrt_" + fee_studied + ".png", bbox_inches='tight')
-    # fig.savefig(save_at_directory + filename + "_final_fortune_wrt_" + fee_studied + ".pdf", bbox_inches='tight')
+    fig.savefig(save_at_directory + filename + "_final_fortune_wrt_" + fee_studied + ".pdf", bbox_inches='tight')
 
     # legend_filename = filename + "_legend.png"
     # save_legend(fig, lines, labels, legend, save_at_directory, legend_filename)

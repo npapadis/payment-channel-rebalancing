@@ -73,7 +73,7 @@ def plot_total_fortune_over_time(filename):
         legend = ax1.legend(lines, labels, loc='best')
 
         fig.savefig(save_at_directory + filename + "_total_fortune_over_time.png", bbox_inches='tight')
-        # fig.savefig(save_at_directory + filename + ".pdf", bbox_inches='tight')
+        fig.savefig(save_at_directory + filename + "_total_fortune_over_time.pdf", bbox_inches='tight')
 
         # legend_filename = filename + "_legend.png"
         # save_legend(fig, lines, labels, legend, save_at_directory, legend_filename)
