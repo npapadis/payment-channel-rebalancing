@@ -17,3 +17,9 @@ There are several rebalancing policies the user can choose from:
 * `Autoloop`: a heuristic policy based on low and high thresholds currently used in practice
 * `Loopmax`: a heuristic policy based on the expected demand calculated from empirical data and trying to rebalance as infrequently as possible and with the maximum amount possible.
 * `RebEL`: "Rebalancing Enabled by Learning": a Deep Reinforcement Learning-based policy using [this implementation of Soft Actor-Critic](https://github.com/pranz24/pytorch-soft-actor-critic) that learns to perform approximately optimal rebalancing actions based on the observed demand from both sides.
+
+This code accompanies the following paper that received the **Best Paper Award** at the [*4th International Conference on Mathematical Research for the Blockchain Economy (MARBLE 2023)*](https://www.marble-conference.org/marble2023).
+
+> N. Papadis and L. Tassiulas, "Deep Reinforcement Learning-based Rebalancing Policies for Profit Maximization of Relay Nodes in Payment Channel Networks", *The 4th International Conference on Mathematical Research for the Blockchain Economy (MARBLE 2023), https://arxiv.org/abs/2210.07302.*
+
+The structure of the experiments performed in the paper and the relevant script for each experiment can be found in the file `experiments_structure.xlsx`.
