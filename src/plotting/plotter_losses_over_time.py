@@ -9,10 +9,8 @@ from pathlib import Path
 # from save_legend import save_legend
 
 
-def plot_fee_losses_over_time(filename):
+def plot_fee_losses_over_time(outputs_directory, save_at_directory, filename):
 
-    outputs_directory = str(Path("../outputs").resolve())
-    save_at_directory = outputs_directory + "/figures/"
     Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 
     times = 'total_fortune_including_pending_swaps_times'
@@ -91,7 +89,7 @@ def plot_fee_losses_over_time(filename):
         legend = ax1.legend(lines, labels, loc='best')
 
         fig.savefig(save_at_directory + filename + "_total_losses_over_time.png", bbox_inches='tight')
-        # fig.savefig(save_at_directory + filename + "_fees_over_time.pdf", bbox_inches='tight')
+        fig.savefig(save_at_directory + filename + "_total_losses_over_time.pdf", bbox_inches='tight')
 
         # legend_filename = filename + "_legend.png"
         # save_legend(fig, lines, labels, legend, save_at_directory, legend_filename)
@@ -131,7 +129,7 @@ def plot_fee_losses_over_time(filename):
         legend = ax3.legend(lines, labels, loc='best')
 
         fig.savefig(save_at_directory + filename + "_reb_fees_over_time.png", bbox_inches='tight')
-        # fig.savefig(save_at_directory + filename + "_fees_over_time.pdf", bbox_inches='tight')
+        fig.savefig(save_at_directory + filename + "_reb_fees_over_time.pdf", bbox_inches='tight')
 
         # legend_filename = filename + "_legend.png"
         # save_legend(fig, lines, labels, legend, save_at_directory, legend_filename)
@@ -140,4 +138,4 @@ def plot_fee_losses_over_time(filename):
 
 
 if __name__ == '__main__':
-    plot_fee_losses_over_time(filename='results_05')
+    plot_fee_losses_over_time(outputs_directory="../../outputs", save_at_directory="../../outputs/figures/", filename='results_05')

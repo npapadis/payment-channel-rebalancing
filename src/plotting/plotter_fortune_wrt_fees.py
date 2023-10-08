@@ -6,7 +6,7 @@ from pathlib import Path
 
 # from save_legend import save_legend
 
-outputs_directory = str(Path("../outputs").resolve())
+outputs_directory = str(Path("../../outputs").resolve())
 save_at_directory = outputs_directory + "/figures/"
 Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 

@@ -156,8 +156,8 @@ def main():
 
     # Create the environment
     env = pypet.Environment(trajectory='relay_node_channel_rebalancing',
-                            filename='outputs/results/' + filename + '.hdf5',
-                            log_folder='./outputs/logs/',
+                            filename='../outputs/results/' + filename + '.hdf5',
+                            log_folder='../outputs/logs/',
                             log_stdout=True,
                             overwrite_file=True)
     traj = env.traj

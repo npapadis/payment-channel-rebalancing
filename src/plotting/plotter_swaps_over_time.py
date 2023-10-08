@@ -7,9 +7,8 @@ from pathlib import Path
 # from save_legend import save_legend
 
 
-def plot_number_of_swaps_over_time(filename):
-    outputs_directory = str(Path("../outputs").resolve())
-    save_at_directory = outputs_directory + "/figures/"
+def plot_number_of_swaps_over_time(outputs_directory, save_at_directory, filename):
+
     Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 
     times = 'rebalancing_history_start_times'
@@ -70,4 +69,4 @@ def plot_number_of_swaps_over_time(filename):
 
 
 if __name__ == '__main__':
-    plot_number_of_swaps_over_time(filename='results_05')
+    plot_number_of_swaps_over_time(outputs_directory="../../outputs", save_at_directory="../../outputs/figures/", filename='results_05')

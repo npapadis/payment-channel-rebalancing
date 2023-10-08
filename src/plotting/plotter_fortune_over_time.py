@@ -8,10 +8,8 @@ from pathlib import Path
 # from save_legend import save_legend
 
 
-def plot_total_fortune_over_time(filename):
+def plot_total_fortune_over_time(outputs_directory, save_at_directory, filename):
 
-    outputs_directory = str(Path("../outputs").resolve())
-    save_at_directory = outputs_directory + "/figures/"
     Path(save_at_directory).mkdir(parents=True, exist_ok=True)
 
     times = 'total_fortune_including_pending_swaps_times'
@@ -82,4 +80,4 @@ def plot_total_fortune_over_time(filename):
 
 
 if __name__ == '__main__':
-    plot_total_fortune_over_time(filename='results_05')
+    plot_total_fortune_over_time(outputs_directory="../../outputs", save_at_directory="../../outputs/figures/", filename='results_05')

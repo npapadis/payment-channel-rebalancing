@@ -79,7 +79,7 @@ class Node:
             )
             self.update_count = 0
             self.reward_normalizer = self.initial_fortune / 1000
-            self.writer = SummaryWriter('./outputs/runs/{}_{}_SAC_{}'.format(filename, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), "autotune" if self.learning_parameters.automatic_entropy_tuning else ""))    # Tensorboard setup
+            self.writer = SummaryWriter('../outputs/runs/{}_{}_SAC_{}'.format(filename, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), "autotune" if self.learning_parameters.automatic_entropy_tuning else ""))    # Tensorboard setup
             self.min_swap_threshold_as_percentage_of_capacity = self.learning_parameters.min_swap_threshold_as_percentage_of_capacity
             self.swap_failure_penalty_coefficient = self.learning_parameters.swap_failure_penalty_coefficient
             self.steps_in_current_episode = 0
